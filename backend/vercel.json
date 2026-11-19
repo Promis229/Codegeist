@@ -3,6 +3,7 @@
   "framework": null,
   "installCommand": "npm ci",
   "buildCommand": "node scripts/vercel-build.mjs",
+  "outputDirectory": "public",
   "rewrites": [{ "source": "/(.*)", "destination": "/api" }],
   "functions": { "api/index.js": { "maxDuration": 30, "memory": 1024 } },
   "crons": [{ "path": "/internal/cron", "schedule": "0 4 * * *" }]

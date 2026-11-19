@@ -1,0 +1,5 @@
+test
+scripts/probe-*
+.env*
+node_modules
+Dockerfile

@@ -94,3 +94,25 @@ Sauvegardez aussi `ENCRYPTION_KEY` : sans elle, les secrets 2FA et le coffre de 
 Kairos fonctionne complètement sans lui (48 analyses statistiques et lexicales). Si vous pouvez un jour héberger un petit
 service Python, `ml/` ajoute un modèle entraîné sur vos demandes (voir `ml/README.md`) : `docker compose --profile ml up`,
 puis `ML_URL` et `ML_API_KEY` dans `.env`. Le backend retombe automatiquement sur ses algorithmes si le service est absent.
+
+## Déployer sur Vercel (frontend et backend séparés)
+
+Deux projets Vercel indépendants, une base PostgreSQL Neon (intégration Vercel) :
+
+| Projet | Dossier | Rôle |
+|---|---|---|
+| `kairos-web` | `frontend/` | application React (PWA) ; `vercel.json` relaie `/api/*` vers le backend (même origine : pas de CORS) |
+| `kairos-api` | `backend/` | API Fastify en fonction serverless (`api/index.js`) ; migrations et jeu de démonstration appliqués à chaque build (`scripts/vercel-build.mjs`) |
+
+```bash
+cd backend  && vercel integration add neon --name kairos-db && vercel deploy --prod
+# renseigner dans le projet kairos-api : JWT_SECRET, ENCRYPTION_KEY (openssl rand -hex 32), CRON_SECRET, SMTP_URL, MAIL_FROM,
+# GOOGLE_*/GITHUB_* , TRUST_PROXY=true, PG_POOL_MAX=3, PUBLIC_URL=WEB_URL=https://<domaine du frontend>
+cd frontend && sed -i 's/kairos-api-omega.vercel.app/<hôte-api>/' vercel.json && vercel deploy --prod
+```
+
+Points d'attention :
+- **Connexion Google / GitHub** : ajouter `https://<domaine-frontend>/api/v1/auth/oauth/<google|github>/callback` aux URI de redirection autorisées de chaque fournisseur.
+- **Pièces jointes** : 3 Mo au total par message (limite de 4,5 Mo des requêtes Vercel, base64 compris).
+- **Webhooks sortants** : envoyés juste après chaque écriture (`waitUntil`), relancés chaque jour par la tâche planifiée `/internal/cron` (`CRON_SECRET`).
+- **Service d'IA (`ml/`)** : PyTorch dépasse la taille d'une fonction Vercel. À héberger sur un service de conteneurs (Hugging Face Spaces Docker, Fly.io, Render…), puis définir `ML_URL` et `ML_API_KEY` (identique à `KAIROS_ML_API_KEY`) dans `kairos-api` et redéployer. Sans lui, les analyses lexicales prennent le relais.
