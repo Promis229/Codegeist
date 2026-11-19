@@ -101,7 +101,10 @@ export default async function oauthRoutes(app) {
         }),
       });
       const tokenJson = await tokenRes.json().catch(() => ({}));
-      if (!tokenRes.ok || !tokenJson.access_token) return back('oauth_exchange_failed', redirect);
+      if (!tokenRes.ok || !tokenJson.access_token) {
+        req.log.warn({ provider, status: tokenRes.status, error: tokenJson.error, description: tokenJson.error_description }, 'oauth: echange du code refuse'); // jamais de secret ni de code
+        return back('oauth_exchange_failed', redirect);
+      }
 
       const prof = await p.profile(tokenJson.access_token);
       let identity = await one('SELECT user_id FROM oauth_identities WHERE provider=$1 AND provider_user_id=$2', [provider, prof.id]);

@@ -4,7 +4,7 @@
  * - Navigations : réseau d'abord, repli sur la coquille en cache, puis sur la page hors ligne.
  * - L'API (/api/) n'est JAMAIS mise en cache : aucune donnée de support ni jeton ne se retrouve sur le disque.
  */
-const VERSION = 'v1';
+const VERSION = 'v2';
 const SHELL = `kairos-shell-${VERSION}`;
 const ASSETS = `kairos-assets-${VERSION}`;
 const MAX_ASSETS = 150;
@@ -17,7 +17,8 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     for (const k of await caches.keys()) if (![SHELL, ASSETS].includes(k)) await caches.delete(k);
-    if (self.registration.navigationPreload) await self.registration.navigationPreload.enable().catch(() => {});
+    // Le préchargement de navigation envoyait chaque requête DEUX fois (même aux redirections OAuth, dont le code est à usage unique) : désactivé.
+    if (self.registration.navigationPreload) await self.registration.navigationPreload.disable().catch(() => {});
     await self.clients.claim();
   })());
 });
@@ -29,7 +30,7 @@ async function trim(cache, max) {
 
 async function navigate(event) {
   try {
-    const res = (await event.preloadResponse) || (await fetch(event.request));
+    const res = await fetch(event.request);
     if (res.ok && res.type === 'basic') {
       // Seules les pages publiques de la coquille sont gardées (la page est la même pour tous : c'est l'application React).
       const c = await caches.open(SHELL); await c.put('/', res.clone());
