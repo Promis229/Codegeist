@@ -3,6 +3,7 @@ import { del, get, patch, post, put } from '../lib/api.js';
 import { resizeToSquare } from '../lib/image.js';
 import { useAuth } from '../lib/auth.jsx';
 import { useResource } from '../lib/hooks.js';
+import { useInstall } from '../lib/pwa.js';
 import { LANGS, errText, useT } from '../i18n/index.jsx';
 import Icon from '../components/Icon.jsx';
 import { Avatar, Badge, Card, CardHead, ErrorNote, Field, PageHead, PasswordInput, Spinner, ago, fmtDate, useToast } from '../components/ui.jsx';
@@ -15,6 +16,7 @@ export default function Settings() {
       <PageHead eyebrow={t('st.eyebrow')} title={t('st.title')} />
       <div className="grid gap-4 xl:grid-cols-2">
         <Profile />
+        <InstallApp />
         <Password />
         <TwoFactor />
         <Sessions />
@@ -22,6 +24,20 @@ export default function Settings() {
         {can('admin') && <Audit />}
       </div>
     </>
+  );
+}
+
+function InstallApp() {
+  const { t } = useT();
+  const { status, install } = useInstall();
+  const toast = useToast();
+  return (
+    <Card i={1}>
+      <CardHead title={t('pwa.title')} hint={t('pwa.hint')} right={status === 'installed' ? <Badge tone="good">{t('pwa.installed')}</Badge> : null} />
+      {status === 'available' && <button type="button" className="btn btn-primary" onClick={async () => { if (await install()) toast(t('pwa.done')); }}><Icon name="download" size={15} /> {t('pwa.install')}</button>}
+      {status === 'ios' && <p className="text-[13.5px] leading-relaxed text-[var(--muted)]">{t('pwa.ios')}</p>}
+      {status === 'unsupported' && <p className="text-[13.5px] leading-relaxed text-[var(--muted)]">{t('pwa.manual')}</p>}
+    </Card>
   );
 }
 

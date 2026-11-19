@@ -1,0 +1,77 @@
+# Kairos : une seule commande   ->   docker compose up --build
+# Avec le service d'IA :          docker compose --profile ml up --build
+name: kairos
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: kairos
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kairos_dev_only}
+      POSTGRES_DB: kairos
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kairos -d kairos"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: "4000"
+      DATABASE_URL: postgres://kairos:${POSTGRES_PASSWORD:-kairos_dev_only}@db:5432/kairos
+      JWT_SECRET: ${JWT_SECRET:?defini JWT_SECRET dans .env}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?defini ENCRYPTION_KEY dans .env}
+      # Les redirections OAuth et les liens des e-mails passent par le front (nginx proxifie /api).
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8080}
+      WEB_URL: ${WEB_URL:-http://localhost:8080}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      FORGE_APP_ID: ${FORGE_APP_ID:-}
+      SMTP_URL: ${SMTP_URL:-}
+      MAIL_FROM: ${MAIL_FROM:-Kairos <no-reply@localhost>}
+      SEED_DEMO: ${SEED_DEMO:-false}
+      # Entrée publique « essayer la démo » (session d'agent sur l'organisation de démonstration) : à activer seulement
+      # sur un déploiement de présentation, avec SEED_DEMO=true.
+      DEMO_LOGIN: ${DEMO_LOGIN:-false}
+      # Service d'IA (facultatif) : laisser vide = algorithmes lexicaux uniquement
+      ML_URL: ${ML_URL:-}
+      ML_API_KEY: ${ML_API_KEY:-}
+    ports:
+      - "127.0.0.1:4000:4000"
+    restart: unless-stopped
+
+  web:
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "${WEB_BIND:-0.0.0.0}:8080:80"   # WEB_BIND=127.0.0.1 derrière le proxy HTTPS (docker-compose.tls.yml)
+    restart: unless-stopped
+
+  # Service d'IA « Kairos Brain », déployé à part. Monte le dossier models/ produit par le notebook d'entraînement.
+  ml:
+    profiles: ["ml"]
+    build: ./ml
+    environment:
+      KAIROS_ENV: production            # en production, le service REFUSE de répondre sans clé (voir ml/kairos_brain/service.py)
+      KAIROS_ML_API_KEY: ${ML_API_KEY:-}
+    volumes:
+      - ./ml/models:/app/models:ro
+    ports:
+      - "127.0.0.1:8100:8100"
+    restart: unless-stopped
+
+volumes:
+  db_data:

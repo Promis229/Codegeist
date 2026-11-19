@@ -8,7 +8,7 @@ import { errText, localeOf, useT } from '../i18n/index.jsx';
 import Icon from '../components/Icon.jsx';
 import { Avatar, Badge, Card, ErrorNote, Field, Modal, PageHead, Skeleton, Spinner, cx, useBlobUrl, useToast } from '../components/ui.jsx';
 
-const MAX_FILES = 4, MAX_FILE = 5 * 1024 * 1024, MAX_TOTAL = 8 * 1024 * 1024;
+const MAX_FILES = 4, MAX_FILE = 3 * 1024 * 1024, MAX_TOTAL = 3 * 1024 * 1024;
 const ACCEPT = 'image/png,image/jpeg,image/gif,image/webp,application/pdf,.pdf,.docx,.xlsx,.pptx,.zip,.txt,.csv,.log,.md';
 
 /** Pièce jointe : les images s'affichent (téléchargées avec le jeton), les autres fichiers se téléchargent au clic. */

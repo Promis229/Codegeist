@@ -448,9 +448,11 @@ export default {
   'lp.x.shots.3.t': 'The copilot', 'lp.x.shots.3.p': 'Answers built from your own articles, with their sources.',
   'ms.copy': 'Copy text', 'ms.copied': 'Text copied', 'ms.reply': 'Reply', 'ms.replyingTo': 'Replying to {name}', 'ms.jumpTo': 'Go to the quoted message', 'ms.notLoaded': 'The quoted message is older: load earlier messages to see it.',
   'ms.attach': 'Attach a file', 'ms.attachment': 'Attachment', 'ms.dropHere': 'Drop your files to attach them',
-  'ms.tooMany': 'Four files at most per message.', 'ms.tooBig': '{name} is larger than 5 MB.', 'ms.totalBig': 'Attachments exceed 8 MB in total.',
+  'ms.tooMany': 'Four files at most per message.', 'ms.tooBig': '{name} is larger than 3 MB.', 'ms.totalBig': 'Attachments exceed 3 MB in total.',
   'ms.refused': '{name}: this file type is not accepted.', 'ms.fileRefused': 'A file was rejected by the security check (active content, macro, executable or unsupported format).',
   'ms.removeFile': 'Remove {name}', 'ms.openImage': 'Open image {name}', 'ms.download': 'Download {name}',
+  'pwa.title': 'Installable app', 'pwa.hint': 'Kairos opens like a real app, on desktop and on your phone.', 'pwa.installed': 'Installed', 'pwa.done': 'Kairos is installed.',
+  'pwa.ios': 'On iPhone and iPad: tap Safari’s Share button, then “Add to Home Screen”.', 'pwa.manual': 'In your browser’s menu, choose “Install app” or “Add to Home screen”.',
   'st.photoUpload': 'Choose a photo', 'st.photoRemove': 'Remove photo', 'st.photoHint': 'JPEG, PNG, WebP or GIF. The photo is cropped to a square and shrunk automatically.',
   'st.photoSaved': 'Photo updated', 'st.photoRemoved': 'Photo removed', 'st.photoInvalid': 'This file is not a usable image.',
 };

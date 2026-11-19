@@ -116,7 +116,7 @@ describe('Messagerie : pièces jointes', () => {
   });
   it('limite le nombre et la taille', async () => {
     assert.equal((await send(bruno, general, { attachments: Array.from({ length: 5 }, (_, i) => file(`${i}.png`, PNG)) })).status, 400);
-    const big = Buffer.concat([PNG.subarray(0, 24), Buffer.alloc(5 * 1024 * 1024 + 10, 1)]);
+    const big = Buffer.concat([PNG.subarray(0, 24), Buffer.alloc(3 * 1024 * 1024 + 10, 1)]);
     assert.equal((await send(bruno, general, { attachments: [file('big.png', big)] })).status, 400);
   });
   it('sert les images en ligne et le reste en téléchargement, isolés (nosniff, CSP sandbox)', async () => {

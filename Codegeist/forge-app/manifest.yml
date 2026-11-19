@@ -1,0 +1,204 @@
+modules:
+  # ------------------------------------------------------------------
+  # Agent Rovo : le copilote de support. Il enchaine les actions ci-dessous.
+  # ------------------------------------------------------------------
+  rovo:agent:
+    - key: kairos-agent
+      name: Kairos Support Copilot
+      description: Triage, reponse sourcee, risque de churn et releve d'equipe pour votre service desk, relies a Jira et Confluence.
+      icon: resource:static;icons/kairos.svg
+      prompt: resource:static;prompts/kairos-agent.txt
+      conversationStarters:
+        - Triage cette demande client et dis-moi ce qui existe deja
+        - Quels clients sont les plus a risque de partir ?
+        - Prepare le releve d'equipe pour la prochaine equipe
+        - Y a-t-il un incident en train de naitre ?
+      actions:
+        - triage-request
+        - answer-with-sources
+        - customers-at-risk
+        - emerging-incidents
+        - shift-handoff
+        - check-reply
+        - find-similar
+
+  # ------------------------------------------------------------------
+  # Actions de l'agent (chacune appelle le backend Kairos)
+  # ------------------------------------------------------------------
+  action:
+    - key: triage-request
+      name: Triager une demande
+      function: triage-request-fn
+      actionVerb: GET
+      description: Analyse une demande client (ton, frustration, priorite suggeree) et retrouve les articles Confluence pertinents et les tickets similaires deja traites.
+      inputs:
+        summary:
+          title: Resume
+          type: string
+          required: true
+          description: Titre ou resume de la demande
+        description:
+          title: Description
+          type: string
+          required: false
+          description: Corps complet de la demande
+    - key: answer-with-sources
+      name: Repondre avec sources
+      function: answer-fn
+      actionVerb: GET
+      description: Compose une reponse a partir de la base de connaissances et des resolutions passees, avec citations. S'abstient explicitement si la confiance est trop faible.
+      inputs:
+        question:
+          title: Question
+          type: string
+          required: true
+          description: La question du client
+    - key: customers-at-risk
+      name: Clients a risque
+      function: risk-fn
+      actionVerb: GET
+      description: Liste les clients avec le plus fort risque d'attrition, avec les signaux qui l'expliquent.
+      inputs:
+        limit:
+          title: Nombre
+          type: integer
+          required: false
+          description: Nombre maximal de clients
+    - key: emerging-incidents
+      name: Incidents emergents
+      function: incidents-fn
+      actionVerb: GET
+      description: Detecte un pic anormal de demandes par composant, avec le rayon d'impact et le deploiement suspect.
+      inputs:
+        scope:
+          title: Portee
+          type: string
+          required: false
+          description: Laisser vide pour tout le service desk
+    - key: shift-handoff
+      name: Releve d'equipe
+      function: handoff-fn
+      actionVerb: GET
+      description: Genere le briefing de releve d'equipe (critiques, clients en attente, clients tendus) en Markdown.
+      inputs:
+        hours:
+          title: Heures
+          type: integer
+          required: false
+          description: Fenetre en heures (defaut 8)
+    - key: check-reply
+      name: Verifier une reponse
+      function: guard-fn
+      actionVerb: GET
+      description: Controle un brouillon de reponse avant envoi (promesses risquees, responsabilite, ton, donnees personnelles).
+      inputs:
+        draft:
+          title: Brouillon
+          type: string
+          required: true
+          description: Le texte de la reponse a verifier
+
+    - key: find-similar
+      name: Trouver des cas proches
+      function: find-similar-fn
+      actionVerb: GET
+      description: Cherche les demandes et articles proches d'une question, dans toutes les langues. L'agent fournit la question ET ses traductions (francais, anglais, espagnol) ; le backend fusionne les resultats.
+      inputs:
+        query:
+          title: Question
+          type: string
+          required: true
+          description: La question ou le probleme, tel que formule
+        translations:
+          title: Traductions
+          type: string
+          required: false
+          description: La meme question traduite en francais, anglais et espagnol (les langues differentes de l'original), separees par le caractere |
+
+  # ------------------------------------------------------------------
+  # Evenements : chaque demande creee est synchronisee et enrichie
+  # ------------------------------------------------------------------
+  trigger:
+    - key: issue-created-trigger
+      function: on-issue-created
+      events:
+        - avi:jira:created:issue
+    - key: issue-commented-trigger
+      function: on-issue-commented
+      events:
+        - avi:jira:commented:issue
+
+  scheduledTrigger:
+    - key: knowledge-sync
+      function: sync-knowledge
+      interval: hour
+
+  # ------------------------------------------------------------------
+  # Panneau dans l'ecran de la demande (UI Kit -> invokeRemote -> FIT)
+  # ------------------------------------------------------------------
+  jira:issuePanel:
+    - key: kairos-panel
+      title: Kairos Copilot
+      icon: https://developer.atlassian.com/platform/forge/images/icons/issue-panel-icon.svg
+      resource: panel
+      render: native
+      resolver:
+        endpoint: kairos-endpoint
+
+  endpoint:
+    - key: kairos-endpoint
+      remote: kairos-backend
+
+  function:
+    - key: triage-request-fn
+      handler: index.triageRequest
+    - key: answer-fn
+      handler: index.answer
+    - key: risk-fn
+      handler: index.customersAtRisk
+    - key: incidents-fn
+      handler: index.incidents
+    - key: handoff-fn
+      handler: index.handoff
+    - key: guard-fn
+      handler: index.guardReply
+    - key: find-similar-fn
+      handler: index.findSimilar
+    - key: on-issue-created
+      handler: index.onIssueCreated
+    - key: on-issue-commented
+      handler: index.onIssueCommented
+    - key: sync-knowledge
+      handler: index.syncKnowledge
+
+remotes:
+  - key: kairos-backend
+    # A REMPLACER par l'URL publique HTTPS de votre backend (voir README, section Deploiement).
+    baseUrl: https://kairos-api.example.com
+    operations:
+      - compute
+    storage:
+      inScopeEUD: false
+
+resources:
+  - key: panel
+    path: src/frontend/index.jsx
+  - key: static
+    path: static
+
+permissions:
+  scopes:
+    - read:jira-work
+    - read:confluence-content.all
+  external:
+    fetch:
+      backend:
+        # Les fonctions (actions Rovo, declencheurs) appellent le backend avec une cle d'API : l'egress doit etre declare.
+        - address: kairos-api.example.com
+          category: analytics
+          inScopeEUD: false
+
+app:
+  runtime:
+    name: nodejs22.x
+  id: ari:cloud:ecosystem::app/REPLACE-WITH-forge-register

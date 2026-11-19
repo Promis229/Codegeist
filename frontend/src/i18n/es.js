@@ -448,9 +448,11 @@ export default {
   'lp.x.shots.3.t': 'El copiloto', 'lp.x.shots.3.p': 'Respuestas construidas a partir de tus propios artículos, con sus fuentes.',
   'ms.copy': 'Copiar el texto', 'ms.copied': 'Texto copiado', 'ms.reply': 'Responder', 'ms.replyingTo': 'Respondiendo a {name}', 'ms.jumpTo': 'Ir al mensaje citado', 'ms.notLoaded': 'El mensaje citado es más antiguo: carga los mensajes anteriores para verlo.',
   'ms.attach': 'Adjuntar un archivo', 'ms.attachment': 'Archivo adjunto', 'ms.dropHere': 'Suelta tus archivos para adjuntarlos',
-  'ms.tooMany': 'Máximo cuatro archivos por mensaje.', 'ms.tooBig': '{name} supera los 5 MB.', 'ms.totalBig': 'Los adjuntos superan los 8 MB en total.',
+  'ms.tooMany': 'Máximo cuatro archivos por mensaje.', 'ms.tooBig': '{name} supera los 3 MB.', 'ms.totalBig': 'Los adjuntos superan los 3 MB en total.',
   'ms.refused': '{name}: este tipo de archivo no se admite.', 'ms.fileRefused': 'Un archivo fue rechazado por la comprobación de seguridad (contenido activo, macro, ejecutable o formato no admitido).',
   'ms.removeFile': 'Quitar {name}', 'ms.openImage': 'Abrir la imagen {name}', 'ms.download': 'Descargar {name}',
+  'pwa.title': 'Aplicación instalable', 'pwa.hint': 'Kairos se abre como una aplicación de verdad, en el ordenador y en el móvil.', 'pwa.installed': 'Instalada', 'pwa.done': 'Kairos está instalado.',
+  'pwa.ios': 'En iPhone y iPad: toca el botón Compartir de Safari y luego «Añadir a pantalla de inicio».', 'pwa.manual': 'En el menú de tu navegador, elige «Instalar aplicación» o «Añadir a la pantalla de inicio».',
   'st.photoUpload': 'Elegir una foto', 'st.photoRemove': 'Quitar la foto', 'st.photoHint': 'JPEG, PNG, WebP o GIF. La foto se recorta en cuadrado y se reduce automáticamente.',
   'st.photoSaved': 'Foto actualizada', 'st.photoRemoved': 'Foto eliminada', 'st.photoInvalid': 'Este archivo no es una imagen utilizable.',
 };

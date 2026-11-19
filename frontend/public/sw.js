@@ -8,7 +8,7 @@ const VERSION = 'v1';
 const SHELL = `kairos-shell-${VERSION}`;
 const ASSETS = `kairos-assets-${VERSION}`;
 const MAX_ASSETS = 150;
-const PRECACHE = ['/offline.html', '/offline.js', '/icon-192.png', '/favicon.svg', '/theme.js'];
+const PRECACHE = ['/', '/offline.html', '/offline.js', '/icon-192.png', '/favicon.svg', '/theme.js'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(SHELL).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()));

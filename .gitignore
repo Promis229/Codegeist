@@ -1,7 +1,13 @@
 node_modules/
 .env
+.env.*
+!.env.example
 dist/
 build/
 .forge/
 .dart_tool/
 *.log
+.vercel/
+__pycache__/
+*.pyc
+.venv/

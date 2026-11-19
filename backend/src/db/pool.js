@@ -6,7 +6,7 @@ pg.types.setTypeParser(20, (v) => Number(v));
 // numeric (EXTRACT, avg, division) revient en TEXTE par defaut : "12.3" + "4.2" donnerait "12.34.2" dans les statistiques.
 pg.types.setTypeParser(1700, (v) => (v === null ? null : Number(v)));
 
-export const pool = new pg.Pool({ connectionString: env.databaseUrl, max: 12, idleTimeoutMillis: 30000 });
+export const pool = new pg.Pool({ connectionString: env.databaseUrl, max: Number(process.env.PG_POOL_MAX ?? 12), idleTimeoutMillis: 10000 });
 pool.on('error', (e) => console.error('pg pool error', e.message));
 
 export const query = (text, params) => pool.query(text, params);

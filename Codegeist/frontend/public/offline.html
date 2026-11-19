@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="fr" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#120d0a" />
+    <title>Kairos</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100dvh; display: grid; place-items: center; padding: 24px; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; color: #f3ece4;
+        background: radial-gradient(900px 600px at 20% 0%, rgba(240,163,94,.22), transparent 60%), radial-gradient(700px 500px at 100% 100%, rgba(255,123,92,.16), transparent 60%), #120d0a; }
+      main { width: 100%; max-width: 420px; text-align: center; padding: 36px 28px; border-radius: 28px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); box-shadow: 0 24px 60px rgba(0,0,0,.4); }
+      img { width: 72px; height: 72px; border-radius: 20px; }
+      h1 { margin: 20px 0 8px; font-size: 24px; letter-spacing: -.01em; }
+      p { margin: 0 0 24px; line-height: 1.55; color: rgba(243,236,228,.72); }
+      button { cursor: pointer; border: 0; border-radius: 999px; padding: 12px 26px; font: 600 15px inherit; color: #1a120c; background: linear-gradient(135deg, #f7b878, #f0a35e); }
+      button:focus-visible { outline: 3px solid #ffd9a3; outline-offset: 3px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="/icon-192.png" alt="" width="72" height="72" />
+      <h1 id="t"></h1>
+      <p id="d"></p>
+      <button id="b" type="button"></button>
+    </main>
+    <script src="/offline.js"></script>
+  </body>
+</html>

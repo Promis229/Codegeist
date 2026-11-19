@@ -10,7 +10,7 @@ const KEY_RE = /\b[A-Z]{2,5}-\d{1,7}\b/g;
 const PROTECTED = new Set(['general']);
 
 // ---------------------------------------------------------------- pièces jointes (contrôles de sécurité : lib/upload.js)
-const MAX_FILE = 5 * 1024 * 1024, MAX_TOTAL = 8 * 1024 * 1024, MAX_FILES = 4;
+const MAX_FILE = 3 * 1024 * 1024, MAX_TOTAL = 3 * 1024 * 1024, MAX_FILES = 4;
 const ORG_QUOTA = Number(process.env.CHAT_QUOTA_MB || 1024) * 1024 * 1024; // stockage total des pièces jointes par organisation
 
 const MSG_SELECT = `
@@ -166,7 +166,7 @@ export default async function chatRoutes(app) {
   });
 
   // Les pièces jointes voyagent en base64 dans le JSON (aucun module de téléversement à déployer) : limite relevée sur cette seule route.
-  app.post('/chat/channels/:id/messages', { ...limited, bodyLimit: 12 * 1024 * 1024 }, async (req, reply) => {
+  app.post('/chat/channels/:id/messages', { ...limited, bodyLimit: 6 * 1024 * 1024 }, async (req, reply) => {
     const { id } = z.object({ id: uuid }).parse(req.params);
     const b = z.object({
       body: z.string().trim().max(4000).default(''),
@@ -181,12 +181,12 @@ export default async function chatRoutes(app) {
     const files = [];
     for (const a of b.attachments) {
       const data = Buffer.from(a.data, 'base64');
-      if (data.length > MAX_FILE) throw badRequest('Fichier trop volumineux (5 Mo maximum)');
+      if (data.length > MAX_FILE) throw badRequest('Fichier trop volumineux (3 Mo maximum)');
       total += data.length;
       const { mime, name } = inspectFile(data, a.name); // type réel, formats actifs refusés, nom assaini
       files.push({ name, mime, data });
     }
-    if (total > MAX_TOTAL) throw badRequest('Pièces jointes trop volumineuses (8 Mo au total)');
+    if (total > MAX_TOTAL) throw badRequest('Pièces jointes trop volumineuses (3 Mo au total)');
     if (files.length) {
       const used = await one(
         `SELECT coalesce(sum(a.size), 0)::bigint AS n FROM chat_attachments a JOIN chat_messages m ON m.id=a.message_id JOIN chat_channels c ON c.id=m.channel_id WHERE c.org_id=$1`, [req.auth.orgId]);
