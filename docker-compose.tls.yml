@@ -1,0 +1,22 @@
+# HTTPS automatique (Let's Encrypt) devant l'application. Indispensable pour Forge (le backend doit être en HTTPS public).
+#   DOMAIN=support.exemple.com WEB_BIND=127.0.0.1 docker compose -f docker-compose.yml -f docker-compose.tls.yml up -d --build
+# Prérequis : un enregistrement DNS A/AAAA de DOMAIN vers ce serveur, ports 80 et 443 ouverts.
+services:
+  caddy:
+    image: caddy:2-alpine
+    depends_on:
+      - web
+    environment:
+      DOMAIN: ${DOMAIN:?définir DOMAIN (ex. support.exemple.com)}
+    command: ["caddy", "reverse-proxy", "--from", "${DOMAIN}", "--to", "web:80"]
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
