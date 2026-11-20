@@ -5,7 +5,7 @@ import { clamp, cusum, linreg, mean, quantile, round } from '../lib/stats.js';
 import { BM25, excerpt, tokenize } from '../lib/text.js';
 import { searchKb } from './core.js';
 import { sentences } from './intelligence.js';
-import { mlCall, mlConfigured, mlOpen, scrub } from '../lib/ml.js';
+import { mlCall, mlConfigured, mlOpen, resetMlBreaker, scrub } from '../lib/ml.js';
 
 const uuid = z.string().uuid();
 const DAY = 86_400_000;
@@ -18,7 +18,8 @@ const HOUR = 3_600_000;
  * garde alors le resultat lexical. La confiance vient de la similarite cosinus reelle, jamais d'une valeur fixee.
  */
 async function semanticAnswer(orgId, question, solved) {
-  if (!mlConfigured() || mlOpen()) return null;
+  if (!mlConfigured()) return null;
+  if (mlOpen()) resetMlBreaker(); // ici on peut attendre : mieux vaut patienter que conclure a tort « aucune source »
   const kb = await many('SELECT id, title, url, body, updated_at FROM kb_articles WHERE org_id=$1 ORDER BY updated_at DESC LIMIT 60', [orgId]);
   const src = [
     ...kb.map((a) => ({ type: 'kb', id: a.id, label: a.title, url: a.url, text: `${a.title}. ${a.body}`, updatedAt: a.updated_at })),
@@ -27,7 +28,7 @@ async function semanticAnswer(orgId, question, solved) {
   const cands = [];
   src.forEach((x, si) => sentences(x.text).slice(0, 12).forEach((t, k) => { if (cands.length < 400) cands.push({ id: `${si}:${k}`, s: t, si }); }));
   if (!cands.length) return null;
-  const r = await mlCall('/v1/search', { query: scrub(question), top_k: 12, candidates: cands.map((c) => ({ id: c.id, text: scrub(c.s) })) }, { timeoutMs: 15_000 });
+  const r = await mlCall('/v1/search', { query: scrub(question), top_k: 12, candidates: cands.map((c) => ({ id: c.id, text: scrub(c.s) })) }, { timeoutMs: 50_000 });
   if (!r?.results?.length) return null;
   const byId = new Map(cands.map((c) => [c.id, c]));
   const ranked = r.results.filter((x) => byId.has(x.id)).map((x) => ({ ...byId.get(x.id), score: x.score }));

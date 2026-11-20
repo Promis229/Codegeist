@@ -32,7 +32,7 @@ app = modal.App("kairos-brain", image=image)
     cpu=2.0,
     memory=3072,
     timeout=120,
-    scaledown_window=600,  # reste chaud 10 min après la dernière requête
+    scaledown_window=1200,  # reste chaud 20 min (maximum) après la dernière requête
     max_containers=2,
 )
 @modal.concurrent(max_inputs=8)

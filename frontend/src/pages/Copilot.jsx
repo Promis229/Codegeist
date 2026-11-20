@@ -1,10 +1,13 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { post } from '../lib/api.js';
 import { useAuth } from '../lib/auth.jsx';
 import { errText, useT } from '../i18n/index.jsx';
 import Icon from '../components/Icon.jsx';
 import { Card, CardHead, PageHead, Spinner, cx, pct, useToast } from '../components/ui.jsx';
 import { Ring } from '../components/Charts.jsx';
+
+// Réveille le service d'IA (il s'éteint sans trafic) dès l'ouverture du copilote : il est prêt quand la question part.
+const warmUp = () => post('/ml/warm', {}).catch(() => {});
 
 const DEMO_QUESTIONS = [1, 2, 3, 4, 5, 6];
 const THINK_MS = 1600; // durée minimale de l'animation « Kairos réfléchit » dans la démo
@@ -134,6 +137,7 @@ export function AnswerPanel({ ticketId, seed = '', onUse, i = 0, standalone = fa
 
 export default function Copilot() {
   const { t } = useT();
+  useEffect(() => { warmUp(); }, []);
   return (
     <>
       <PageHead eyebrow={t('cp.eyebrow')} title={t('cp.pageTitle')} />
