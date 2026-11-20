@@ -90,6 +90,16 @@ describe('Inscription et confirmation par code', () => {
   });
 });
 
+describe('Audience du jeton Forge', () => {
+  it("accepte l'ARI complet comme l'UUID nu", async () => {
+    const { forgeAudiences } = await import('../src/auth/forge.js');
+    const uuid = '873bb47a-15ff-4151-9a17-0ddd0bb3ce83';
+    const ari = `ari:cloud:ecosystem::app/${uuid}`;
+    for (const configured of [uuid, ari]) assert.deepEqual([...forgeAudiences(configured)].sort(), [ari, uuid].sort());
+    assert.deepEqual(forgeAudiences(''), []);
+  });
+});
+
 describe('Entrée démo : désactivée par défaut', () => {
   it("/auth/demo n'existe pas sans DEMO_LOGIN=true, et /auth/providers ne l'annonce pas", async () => {
     assert.equal((await call('POST', '/auth/demo')).status, 404);

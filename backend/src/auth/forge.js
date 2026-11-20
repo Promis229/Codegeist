@@ -12,6 +12,17 @@ let override = null;
 /** Permet aux tests d'injecter un verificateur sans appeler le reseau. */
 export const setForgeVerifier = (fn) => { override = fn; };
 
+/**
+ * Audiences acceptees pour notre application. Le jeton porte l'ARI complet (ari:cloud:ecosystem::app/<uuid>) ;
+ * on accepte aussi l'UUID nu, au cas ou la variable FORGE_APP_ID ne contient que l'identifiant.
+ */
+export function forgeAudiences(appId) {
+  const id = String(appId ?? '').trim();
+  if (!id) return [];
+  const uuid = id.split('/').pop();
+  return [...new Set([id, uuid, `ari:cloud:ecosystem::app/${uuid}`])];
+}
+
 export function looksLikeForgeToken(token) {
   try { return decodeProtectedHeader(token).alg === 'RS256'; } catch { return false; }
 }
@@ -21,11 +32,13 @@ export async function verifyForgeToken(token) {
   jwks ??= createRemoteJWKSet(new URL(JWKS_URL), { cooldownDuration: 30_000 });
   try {
     const opts = { issuer: 'forge/invocation-token', algorithms: ['RS256'] };
-    if (env.forgeAppId) opts.audience = env.forgeAppId; // l'audience DOIT etre notre application
+    if (env.forgeAppId) opts.audience = forgeAudiences(env.forgeAppId); // l'audience DOIT etre notre application
     else if (env.isProd) throw new Error('FORGE_APP_ID requis en production');
     const { payload } = await jwtVerify(token, jwks, opts);
     return payload;
-  } catch {
+  } catch (e) {
+    // Motif du rejet dans les journaux (jamais le jeton lui-meme) : aide a diagnostiquer une mauvaise configuration.
+    console.warn('[forge] jeton refuse :', e?.code ?? e?.name, e?.claim ?? '', e?.message);
     throw unauthorized('Forge Invocation Token invalide');
   }
 }
