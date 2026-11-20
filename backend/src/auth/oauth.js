@@ -123,7 +123,7 @@ export default async function oauthRoutes(app) {
             await query('UPDATE refresh_tokens SET revoked_at = coalesce(revoked_at, now()) WHERE user_id=$1', [existing.id]);
           }
         } else {
-          const created = await createUserWithOrg({ email: prof.email.toLowerCase(), displayName: prof.name, emailVerified: true, avatarUrl: prof.avatar });
+          const created = await createUserWithOrg({ email: prof.email.toLowerCase(), displayName: prof.name, emailVerified: true, avatarUrl: prof.avatar, consent: true /* l'ecran d'inscription indique que continuer vaut acceptation */ });
           userId = created.user.id;
         }
         await query('INSERT INTO oauth_identities(user_id, provider, provider_user_id, email) VALUES ($1,$2,$3,$4)', [userId, provider, prof.id, prof.email]);

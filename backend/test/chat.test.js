@@ -30,7 +30,7 @@ before(async () => {
   viewer = await login('viewer@kairos.dev');
   // Un compte d'une AUTRE organisation, pour vérifier le cloisonnement.
   const email = `chat-out-${rid}@example.com`;
-  await call('POST', '/auth/register', null, { email, password: 'Str0ng-Passphrase!', displayName: 'Outsider', orgName: `Out ${rid}` });
+  await call('POST', '/auth/register', null, { email, password: 'Str0ng-Passphrase!', acceptTerms: true, acceptPrivacy: true, displayName: 'Outsider', orgName: `Out ${rid}` });
   const code = [...outbox].reverse().find((m) => m.to === email).text.match(/\b(\d{6})\b/)[1];
   outsider = (await call('POST', '/auth/verify-email', null, { email, code })).body;
 });

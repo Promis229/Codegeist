@@ -16,7 +16,7 @@ const call = async (method, url, { token, body } = {}) => {
 };
 const lastCode = (email) => [...outbox].reverse().find((m) => m.to === email)?.text.match(/\b(\d{6})\b/)?.[1];
 async function newUser(email) {
-  await call('POST', '/auth/register', { body: { email, password: 'Str0ng-Passphrase!', displayName: 'Autre', orgName: `Org ${email}` } });
+  await call('POST', '/auth/register', { body: { email, password: 'Str0ng-Passphrase!', acceptTerms: true, acceptPrivacy: true, displayName: 'Autre', orgName: `Org ${email}` } });
   return (await call('POST', '/auth/verify-email', { body: { email, code: lastCode(email) } })).body.accessToken;
 }
 

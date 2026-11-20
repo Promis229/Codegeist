@@ -164,7 +164,7 @@ describe('OAuth Google et GitHub (flux complet contre de faux fournisseurs)', ()
 
   it("compte existant et vérifié : l'identité Google est liée, le mot de passe est conservé", async () => {
     const email = `linked-${rid}@example.com`;
-    await call('POST', '/auth/register', { body: { email, password: 'Str0ng-Passphrase!', displayName: 'Lia', orgName: `Org ${email}` } });
+    await call('POST', '/auth/register', { body: { email, password: 'Str0ng-Passphrase!', acceptTerms: true, acceptPrivacy: true, displayName: 'Lia', orgName: `Org ${email}` } });
     const code = [...outbox].reverse().find((m) => m.to === email).text.match(/\b(\d{6})\b/)[1];
     const verified = await call('POST', '/auth/verify-email', { body: { email, code } });
     const a = authorize(await start('google'), google(`sub-ln-${rid}`, email));
@@ -177,7 +177,7 @@ describe('OAuth Google et GitHub (flux complet contre de faux fournisseurs)', ()
   it("anti pré-piratage : un compte NON confirmé créé par un tiers perd son mot de passe quand le vrai propriétaire se connecte par Google", async () => {
     const email = `victim-${rid}@example.com`;
     // l'attaquant s'inscrit avec l'e-mail de la victime et SON mot de passe, sans pouvoir le confirmer
-    assert.equal((await call('POST', '/auth/register', { body: { email, password: 'Attacker-Pass-123!', displayName: 'Pirate' } })).status, 201);
+    assert.equal((await call('POST', '/auth/register', { body: { email, password: 'Attacker-Pass-123!', acceptTerms: true, acceptPrivacy: true, displayName: 'Pirate' } })).status, 201);
     const before = await one('SELECT password_hash, email_verified FROM users WHERE email=$1', [email]);
     assert.ok(before.password_hash && before.email_verified === false);
     // la victime se connecte avec Google (le fournisseur prouve qu'elle possède l'adresse)

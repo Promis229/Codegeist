@@ -59,7 +59,7 @@ describe('Raccordement au service d\'IA (Kairos Brain)', () => {
     viewer = (await call('POST', '/api-keys', { token: tk, body: { name: `lecture-${rid}`, scopes: ['read'] } })).body.key;
     // propriétaire d'une AUTRE organisation
     const email = `ml-${rid}@example.com`;
-    await call('POST', '/auth/register', { body: { email, password: 'Str0ng-Passphrase!', displayName: 'Autre', orgName: `Org ${email}` } });
+    await call('POST', '/auth/register', { body: { email, password: 'Str0ng-Passphrase!', acceptTerms: true, acceptPrivacy: true, displayName: 'Autre', orgName: `Org ${email}` } });
     other = (await call('POST', '/auth/verify-email', { body: { email, code: lastCode(email) } })).body.accessToken;
     ticket = (await call('GET', '/tickets?status=open&limit=1', { token: tk })).body.tickets[0];
   });

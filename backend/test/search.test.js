@@ -22,7 +22,7 @@ before(async () => {
   app = await buildApp({ logger: false }); await app.ready();
   bruno = await login('bruno@kairos.dev'); chen = await login('chen@kairos.dev');
   const email = `search-out-${rid}@example.com`;
-  await call('POST', '/auth/register', null, { email, password: 'Str0ng-Passphrase!', displayName: 'Outsider', orgName: `Out ${rid}` });
+  await call('POST', '/auth/register', null, { email, password: 'Str0ng-Passphrase!', acceptTerms: true, acceptPrivacy: true, displayName: 'Outsider', orgName: `Out ${rid}` });
   const code = [...outbox].reverse().find((m) => m.to === email).text.match(/\b(\d{6})\b/)[1];
   outsider = (await call('POST', '/auth/verify-email', null, { email, code })).body.accessToken;
 });

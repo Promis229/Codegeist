@@ -25,8 +25,10 @@ export default async function authRoutes(app) {
     const body = z.object({
       email: emailSchema, password: passwordSchema,
       displayName: z.string().trim().min(1).max(80), orgName: z.string().trim().min(2).max(80).optional(),
+      // Consentement explicite : les deux cases doivent etre cochees (le serveur refuse sinon, quel que soit le client).
+      acceptTerms: z.literal(true), acceptPrivacy: z.literal(true),
     }).parse(req.body);
-    const { user, org } = await createUserWithOrg(body); // email_verified = false
+    const { user, org } = await createUserWithOrg({ ...body, consent: true }); // email_verified = false
     await audit(org.id, user.id, 'auth.register', 'user', user.id);
     try { await sendVerificationCode(user); }
     catch (e) {

@@ -21,7 +21,7 @@ const call = async (method, url, { token, body, headers } = {}) => {
 const lastCode = (email) => [...outbox].reverse().find((m) => m.to === email)?.text.match(/\b(\d{6})\b/)?.[1];
 
 async function registerAndVerify(email, password = 'Str0ng-Passphrase!') {
-  const reg = await call('POST', '/auth/register', { body: { email, password, displayName: 'Test User', orgName: `Org ${email}` } });
+  const reg = await call('POST', '/auth/register', { body: { email, password, acceptTerms: true, acceptPrivacy: true, displayName: 'Test User', orgName: `Org ${email}` } });
   assert.equal(reg.status, 201);
   const ver = await call('POST', '/auth/verify-email', { body: { email, code: lastCode(email) } });
   assert.equal(ver.status, 200, JSON.stringify(ver.body));
@@ -40,7 +40,7 @@ after(async () => { await app.close(); await pool.end(); });
 describe('Inscription et confirmation par code', () => {
   const email = `reg-${rid}@example.com`;
   it("n'ouvre AUCUNE session a l'inscription et envoie un code", async () => {
-    const r = await call('POST', '/auth/register', { body: { email, password: 'Str0ng-Passphrase!', displayName: 'Reg' } });
+    const r = await call('POST', '/auth/register', { body: { email, password: 'Str0ng-Passphrase!', acceptTerms: true, acceptPrivacy: true, displayName: 'Reg' } });
     assert.equal(r.status, 201);
     assert.equal(r.body.verificationRequired, true);
     assert.equal(r.body.accessToken, undefined);
@@ -62,7 +62,7 @@ describe('Inscription et confirmation par code', () => {
   });
   it('bloque apres 5 essais errones', async () => {
     const e = `brute-${rid}@example.com`;
-    await call('POST', '/auth/register', { body: { email: e, password: 'Str0ng-Passphrase!', displayName: 'B' } });
+    await call('POST', '/auth/register', { body: { email: e, password: 'Str0ng-Passphrase!', acceptTerms: true, acceptPrivacy: true, displayName: 'B' } });
     const real = lastCode(e);
     let lastStatus;
     for (let i = 0; i < 6; i++) lastStatus = (await call('POST', '/auth/verify-email', { body: { email: e, code: real === '123456' ? '654321' : '123456' } })).status;
@@ -70,8 +70,22 @@ describe('Inscription et confirmation par code', () => {
     const ok = await call('POST', '/auth/verify-email', { body: { email: e, code: real } });
     assert.notEqual(ok.status, 200); // le bon code ne rattrape plus un code brule
   });
+  it("refuse l'inscription sans acceptation des conditions et de la politique de confidentialite", async () => {
+    const base = { password: 'Str0ng-Passphrase!', displayName: 'NoConsent' };
+    for (const extra of [{}, { acceptTerms: true }, { acceptPrivacy: true }, { acceptTerms: true, acceptPrivacy: false }, { acceptTerms: 'true', acceptPrivacy: 'true' }]) {
+      const email = `noconsent-${rid}-${Object.keys(extra).length}-${JSON.stringify(extra).length}@example.com`;
+      const r = await call('POST', '/auth/register', { body: { ...base, email, ...extra } });
+      assert.equal(r.status, 400, JSON.stringify(extra));
+      assert.equal((await pool.query('SELECT 1 FROM users WHERE email=$1', [email])).rowCount, 0); // aucun compte cree
+    }
+  });
+  it("enregistre la date et la version acceptees", async () => {
+    const row = (await pool.query('SELECT terms_accepted_at, terms_version FROM users WHERE email=$1', [email])).rows[0];
+    assert.ok(row.terms_accepted_at);
+    assert.match(row.terms_version, /^\d{4}-\d{2}-\d{2}$/);
+  });
   it('rejette un mot de passe faible', async () => {
-    const r = await call('POST', '/auth/register', { body: { email: `weak-${rid}@example.com`, password: 'password', displayName: 'W' } });
+    const r = await call('POST', '/auth/register', { body: { email: `weak-${rid}@example.com`, password: 'password', acceptTerms: true, acceptPrivacy: true, displayName: 'W' } });
     assert.equal(r.status, 400);
   });
 });

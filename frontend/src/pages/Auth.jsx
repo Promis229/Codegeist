@@ -130,7 +130,7 @@ const GithubLogo = () => (
 );
 const LOGO = { google: GoogleLogo, github: GithubLogo };
 
-function OAuthButtons() {
+function OAuthButtons({ notice = null }) {
   const { t } = useT();
   const { data } = useResource(() => get('/auth/providers', { auth: false }), []);
   const on = (data?.providers ?? []).filter((p) => p.enabled);
@@ -148,6 +148,7 @@ function OAuthButtons() {
         })}
         {data?.demo && <Link to="/demo" className="btn !h-11 border-accent/40 text-accent">{t('auth.demo.link')}</Link>}
       </div>
+      {notice && on.length > 0 && notice}
     </>
   );
 }
@@ -213,18 +214,34 @@ export function Login() {
   );
 }
 
+/** Case de consentement obligatoire (conditions d'utilisation, politique de confidentialite). */
+function Consent({ id, checked, onChange, error, children }) {
+  return (
+    <div>
+      <label htmlFor={id} className="flex cursor-pointer items-start gap-3 text-[13px] leading-snug text-muted">
+        <input id={id} type="checkbox" required checked={checked} onChange={onChange} aria-invalid={error ? 'true' : undefined} className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--accent)]" />
+        <span>{children}</span>
+      </label>
+      {error && <p role="alert" className="mt-1 pl-7 text-[12px] text-bad">{error}</p>}
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------- Inscription
 export function Register() {
   const { t } = useT();
   const nav = useNavigate();
-  const [f, setF] = useState({ displayName: '', email: '', password: '', orgName: '' });
+  const [f, setF] = useState({ displayName: '', email: '', password: '', orgName: '', acceptTerms: false, acceptPrivacy: false });
   const [err, setErr] = useState(null);
   const [issues, setIssues] = useState({});
   const [busy, setBusy] = useState(false);
   const up = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const tick = (k) => (e) => setF({ ...f, [k]: e.target.checked });
 
   async function submit(e) {
-    e.preventDefault(); setErr(null); setIssues({}); setBusy(true);
+    e.preventDefault(); setErr(null); setIssues({});
+    if (!f.acceptTerms || !f.acceptPrivacy) { setIssues({ acceptTerms: f.acceptTerms ? null : t('auth.reg.consentRequired'), acceptPrivacy: f.acceptPrivacy ? null : t('auth.reg.consentRequired') }); return; }
+    setBusy(true);
     try {
       const body = { ...f }; if (!body.orgName.trim()) delete body.orgName;
       const r = await post('/auth/register', body, { auth: false });
@@ -241,10 +258,22 @@ export function Register() {
         <Field label={t('auth.reg.email')} error={issues.email}><input className="input" type="email" required autoComplete="email" value={f.email} onChange={up('email')} /></Field>
         <Field label={t('common.password')} hint={t('auth.pwRule')} error={issues.password}><PasswordInput required autoComplete="new-password" value={f.password} onChange={up('password')} /></Field>
         <Field label={t('auth.reg.org')} error={issues.orgName}><input className="input" value={f.orgName} onChange={up('orgName')} placeholder={t('auth.reg.orgPh')} /></Field>
+        <div className="space-y-2.5">
+          <Consent id="acceptTerms" checked={f.acceptTerms} onChange={tick('acceptTerms')} error={issues.acceptTerms}>
+            {t('auth.reg.terms.pre')} <Link to="/terms" target="_blank" rel="noopener" className="font-semibold text-accent underline underline-offset-2">{t('legal.nav.terms')}</Link>
+          </Consent>
+          <Consent id="acceptPrivacy" checked={f.acceptPrivacy} onChange={tick('acceptPrivacy')} error={issues.acceptPrivacy}>
+            {t('auth.reg.privacy.pre')} <Link to="/privacy" target="_blank" rel="noopener" className="font-semibold text-accent underline underline-offset-2">{t('legal.nav.privacy')}</Link> {t('auth.reg.privacy.post')}
+          </Consent>
+        </div>
         <FormError msg={err && errText(err)} />
         <Submit busy={busy}>{t('auth.reg.submit')}</Submit>
       </form>
-      <OAuthButtons />
+      <OAuthButtons notice={(
+        <p className="mt-4 text-center text-[12px] leading-relaxed text-faint">
+          {t('auth.reg.oauth.pre')} <Link to="/terms" target="_blank" rel="noopener" className="text-accent underline underline-offset-2">{t('legal.nav.terms')}</Link> {t('auth.reg.oauth.and')} <Link to="/privacy" target="_blank" rel="noopener" className="text-accent underline underline-offset-2">{t('legal.nav.privacy')}</Link>.
+        </p>
+      )} />
     </Shell>
   );
 }

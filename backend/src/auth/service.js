@@ -8,16 +8,19 @@ import { issueRefresh, signAccess } from './tokens.js';
 export const slugify = (s) =>
   s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'org';
 
-/** Cree un utilisateur + sa premiere organisation (proprietaire). */
-export async function createUserWithOrg({ email, password, displayName, orgName, emailVerified = false, avatarUrl = null }) {
+/** Version des conditions d'utilisation et de la politique de confidentialite acceptees a l'inscription (date de derniere mise a jour des pages). */
+export const TERMS_VERSION = '2026-11-20';
+
+/** Cree un utilisateur + sa premiere organisation (proprietaire). `consent` : l'utilisateur a accepte les conditions et la politique de confidentialite. */
+export async function createUserWithOrg({ email, password, displayName, orgName, emailVerified = false, avatarUrl = null, consent = false }) {
   const passwordHash = password ? await hashPassword(password) : null;
   return tx(async (db) => {
     const exists = await db.one('SELECT 1 FROM users WHERE email=$1', [email]);
     if (exists) throw new AppError(409, 'email_taken', 'Un compte existe deja avec cet email');
     const user = await db.one(
-      `INSERT INTO users(email, password_hash, display_name, email_verified, avatar_url)
-       VALUES ($1,$2,$3,$4,$5) RETURNING id, email, display_name`,
-      [email, passwordHash, displayName, emailVerified, avatarUrl],
+      `INSERT INTO users(email, password_hash, display_name, email_verified, avatar_url, terms_accepted_at, terms_version)
+       VALUES ($1,$2,$3,$4,$5, CASE WHEN $6 THEN now() END, CASE WHEN $6 THEN $7 END) RETURNING id, email, display_name`,
+      [email, passwordHash, displayName, emailVerified, avatarUrl, consent, TERMS_VERSION],
     );
     const base = slugify(orgName ?? `${displayName}-desk`);
     const org = await db.one(

@@ -52,4 +52,11 @@ export default {
   'legal.terms.s9.p': 'You can stop using Kairos and ask us to delete your account at any time. We may suspend or close an account that breaks these terms or puts the service or other users at risk.',
   'legal.terms.s10.h': 'Changes to these terms',
   'legal.terms.s10.p': 'We may update these terms. The date at the top of the page shows the latest version. Continuing to use Kairos after a change means you accept it.',
+
+  'auth.reg.terms.pre': 'I have read and accept the',
+  'auth.reg.privacy.pre': 'I have read the',
+  'auth.reg.privacy.post': 'and agree to the processing of my personal data as it describes.',
+  'auth.reg.consentRequired': 'This box must be ticked to create an account.',
+  'auth.reg.oauth.pre': 'By continuing with Google or GitHub, you accept the',
+  'auth.reg.oauth.and': 'and the',
 };
