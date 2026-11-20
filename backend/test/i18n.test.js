@@ -49,4 +49,13 @@ describe('Contenus de démonstration dans la langue de l’interface (en-tête X
     const hit = (await get('/search?q=firewall', 'en')).messages;
     assert.ok(hit.length > 0 && /firewall/i.test(hit[0].body), 'recherche dans la traduction, résultat affiché en anglais');
   });
+  it('copilote : la réponse reste dans une seule langue, celle de la question (jamais un mélange de versions)', async () => {
+    const ask = async (question) => (await app.inject({ method: 'POST', url: '/api/v1/intel/answer', headers: { authorization: `Bearer ${token}` }, payload: { question } })).json();
+    const en = await ask('How do I reset my password? My customer cannot log in');
+    assert.equal(en.abstained, false);
+    assert.doesNotMatch(en.answer, /restablecer|réinitialiser|Para |Pour /, 'monolingue : pas de phrases espagnoles ou françaises');
+    const fr = await ask('Comment un client peut-il réinitialiser son mot de passe ?');
+    assert.equal(fr.abstained, false);
+    assert.doesNotMatch(fr.answer, /To reset|Para restablecer/, 'monolingue : pas de phrases anglaises ou espagnoles');
+  });
 });

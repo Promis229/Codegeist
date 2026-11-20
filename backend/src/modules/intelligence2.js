@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { many, one } from '../db/pool.js';
 import { badRequest, notFound } from '../lib/errors.js';
 import { clamp, cusum, linreg, mean, quantile, round } from '../lib/stats.js';
-import { BM25, excerpt, tokenize } from '../lib/text.js';
+import { BM25, detectLang, excerpt, tokenize } from '../lib/text.js';
 import { searchKb } from './core.js';
 import { sentences } from './intelligence.js';
 import { mlCall, mlConfigured, mlOpen, resetMlBreaker, scrub } from '../lib/ml.js';
@@ -26,19 +26,24 @@ async function semanticAnswer(orgId, question, solved) {
     ...solved.filter((t) => t.answers).slice(0, 80).map((t) => ({ type: 'ticket', id: t.id, label: t.key, text: t.answers })),
   ];
   const cands = [];
-  src.forEach((x, si) => sentences(x.text).slice(0, 12).forEach((t, k) => { if (cands.length < 400) cands.push({ id: `${si}:${k}`, s: t, si }); }));
+  src.forEach((x, si) => sentences(x.text).slice(0, 12).forEach((t, k) => { if (cands.length < 400) cands.push({ id: `${si}:${k}`, s: t, si, lang: detectLang(t) }); }));
   if (!cands.length) return null;
   const r = await mlCall('/v1/search', { query: scrub(question), top_k: 12, candidates: cands.map((c) => ({ id: c.id, text: scrub(c.s) })) }, { timeoutMs: 50_000 });
   if (!r?.results?.length) return null;
   const byId = new Map(cands.map((c) => [c.id, c]));
   const ranked = r.results.filter((x) => byId.has(x.id)).map((x) => ({ ...byId.get(x.id), score: x.score }));
   if (!ranked.length) return null;
-  const top = ranked[0].score;
+  // One language per answer: the question's own language when a good enough source exists in it, else the language of the best match.
+  const qLang = detectLang(question);
+  const same = ranked.filter((c) => c.lang === qLang);
+  const lang = same.length && same[0].score >= 0.27 && same[0].score >= ranked[0].score - 0.15 ? qLang : ranked[0].lang;
+  const pool = ranked.filter((c) => c.lang === lang);
+  const top = pool[0].score;
   const picked = [];
   const seen = new Set();
-  for (const c of ranked) {
-    if (picked.length >= 4 || c.score < 0.27 || c.score < top - 0.12) break;
-    const norm = c.s.toLowerCase().replace(/s+/g, ' ');
+  for (const c of pool) {
+    if (picked.length >= 4 || c.score < Math.max(0.3, 0.27) || c.score < top - 0.08) break;
+    const norm = c.s.toLowerCase().replace(/\s+/g, ' ');
     if (seen.has(norm) || picked.filter((x) => x.si === c.si).length >= 2) continue; // meme phrase recopiee dans plusieurs tickets : une seule fois
     seen.add(norm);
     picked.push(c);
@@ -283,6 +288,9 @@ export default async function intelligence2Routes(app) {
       ...arts.map((a) => ({ type: 'kb', id: a.id, label: a.title, url: a.url, rank: a.score, text: a.body, updatedAt: a.updated_at })),
       ...sim.filter((s) => s.answers).map((s) => ({ type: 'ticket', id: s.id, label: s.key, rank: 0.7, text: s.answers })),
     ];
+    const qLang = detectLang(question);
+    const sameLang = sources.filter((x) => detectLang(x.text) === qLang);
+    if (sameLang.length) sources = sameLang; // never mix the language versions of an article in one answer
     const pool = sources.flatMap((src, si) => sentences(src.text).map((s) => ({ s, si })));
     const sem = await semanticAnswer(req.auth.orgId, question, solved).catch(() => null);
     if (!pool.length && !sem?.picked.length) {
