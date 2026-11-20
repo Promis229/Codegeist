@@ -41,6 +41,7 @@ vercel integration add neon --name kairos-db        # accept the terms in the br
 | `GOOGLE_CLIENT_ID/SECRET`, `GITHUB_CLIENT_ID/SECRET` | optional social sign-in (see below) |
 | `SEED_DEMO`, `DEMO_LOGIN` | `true`, `true` **only** for a showcase deployment (see "Demo") |
 | `ML_URL`, `ML_API_KEY` | AI service (see "The AI model is optional") |
+| `FORGE_APP_ID` | **Required in production** for the Forge app: the app id from the Forge manifest, in the form `ari:cloud:ecosystem::app/<uuid>`. Without it the backend rejects every Forge Invocation Token (the Jira panel then shows "Remote could not verify the Forge Invocation Token"). Redeploy after adding it. |
 
 In `frontend/vercel.json`, the `/api/:path*` rewrite must point to the API project's host.
 
