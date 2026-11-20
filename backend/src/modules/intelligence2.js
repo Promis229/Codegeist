@@ -5,12 +5,50 @@ import { clamp, cusum, linreg, mean, quantile, round } from '../lib/stats.js';
 import { BM25, excerpt, tokenize } from '../lib/text.js';
 import { searchKb } from './core.js';
 import { sentences } from './intelligence.js';
+import { mlCall, mlConfigured, mlOpen, scrub } from '../lib/ml.js';
 
 const uuid = z.string().uuid();
 const DAY = 86_400_000;
 const HOUR = 3_600_000;
 
 /** Heure/jour locaux d'un instant dans un fuseau IANA (repli UTC si fuseau invalide). */
+/**
+ * Reponse sourcee, version SEMANTIQUE (service d'IA) : retrouve les phrases qui repondent a la question meme sans mot en commun
+ * ou dans une autre langue (question en francais, article en anglais). Renvoie null si le service est indisponible : l'appelant
+ * garde alors le resultat lexical. La confiance vient de la similarite cosinus reelle, jamais d'une valeur fixee.
+ */
+async function semanticAnswer(orgId, question, solved) {
+  if (!mlConfigured() || mlOpen()) return null;
+  const kb = await many('SELECT id, title, url, body, updated_at FROM kb_articles WHERE org_id=$1 ORDER BY updated_at DESC LIMIT 60', [orgId]);
+  const src = [
+    ...kb.map((a) => ({ type: 'kb', id: a.id, label: a.title, url: a.url, text: `${a.title}. ${a.body}`, updatedAt: a.updated_at })),
+    ...solved.filter((t) => t.answers).slice(0, 80).map((t) => ({ type: 'ticket', id: t.id, label: t.key, text: t.answers })),
+  ];
+  const cands = [];
+  src.forEach((x, si) => sentences(x.text).slice(0, 12).forEach((t, k) => { if (cands.length < 400) cands.push({ id: `${si}:${k}`, s: t, si }); }));
+  if (!cands.length) return null;
+  const r = await mlCall('/v1/search', { query: scrub(question), top_k: 12, candidates: cands.map((c) => ({ id: c.id, text: scrub(c.s) })) }, { timeoutMs: 15_000 });
+  if (!r?.results?.length) return null;
+  const byId = new Map(cands.map((c) => [c.id, c]));
+  const ranked = r.results.filter((x) => byId.has(x.id)).map((x) => ({ ...byId.get(x.id), score: x.score }));
+  if (!ranked.length) return null;
+  const top = ranked[0].score;
+  const picked = [];
+  const seen = new Set();
+  for (const c of ranked) {
+    if (picked.length >= 4 || c.score < 0.4 || c.score < top - 0.12) break;
+    const norm = c.s.toLowerCase().replace(/s+/g, ' ');
+    if (seen.has(norm) || picked.filter((x) => x.si === c.si).length >= 2) continue; // meme phrase recopiee dans plusieurs tickets : une seule fois
+    seen.add(norm);
+    picked.push(c);
+  }
+  const distinct = new Set(picked.map((x) => x.si)).size;
+  const kbBest = src[picked[0]?.si];
+  const fresh = kbBest?.updatedAt ? ((Date.now() - new Date(kbBest.updatedAt)) / DAY < 180 ? 1 : 0.5) : 0.5;
+  const confidence = picked.length ? round(clamp(0.75 * clamp((top - 0.35) / 0.4, 0, 1) + 0.15 * Math.min(distinct / 2, 1) + 0.1 * fresh, 0, 0.9), 3) : 0;
+  return { sources: src, picked: picked.map((c) => ({ s: c.s, si: c.si, matched: [] })), confidence, coverage: round(top, 3), top };
+}
+
 export function localParts(date, tz = 'UTC') {
   try {
     const p = new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: 'numeric', weekday: 'short', hourCycle: 'h23' }).formatToParts(date);
@@ -238,18 +276,19 @@ export default async function intelligence2Routes(app) {
          FROM tickets t WHERE t.org_id=$1 AND t.status IN ('resolved','closed') AND t.id IS DISTINCT FROM $2::uuid ORDER BY t.resolved_at DESC LIMIT 400`, [req.auth.orgId, ticketId ?? null]);
     const sIdx = new BM25(solved.map((s) => ({ id: s.id, text: `${s.title} ${s.body}` })));
     const sim = sIdx.search(question, 3).map((h) => ({ ...solved.find((s) => s.id === h.id), score: h.score }));
-    const sources = [
+    let sources = [
       ...arts.map((a) => ({ type: 'kb', id: a.id, label: a.title, url: a.url, rank: a.score, text: a.body, updatedAt: a.updated_at })),
       ...sim.filter((s) => s.answers).map((s) => ({ type: 'ticket', id: s.id, label: s.key, rank: 0.7, text: s.answers })),
     ];
     const pool = sources.flatMap((src, si) => sentences(src.text).map((s) => ({ s, si })));
-    if (!pool.length) {
+    const sem = await semanticAnswer(req.auth.orgId, question, solved).catch(() => null);
+    if (!pool.length && !sem?.picked.length) {
       const saved = await one(`INSERT INTO answer_provenance(org_id, ticket_id, question, answer, confidence, citations) VALUES ($1,$2,$3,'',0,'[]') RETURNING id`, [req.auth.orgId, ticketId ?? null, question]);
       return { id: saved.id, abstained: true, confidence: 0, reason: 'Aucune source pertinente dans la base de connaissances ni dans les resolutions passees.', citations: [] };
     }
     const idx = new BM25(pool.map((p, i) => ({ id: i, text: p.s })));
     const qTokens = [...new Set(tokenize(question))];
-    const picked = [];
+    let picked = [];
     const covered = new Set();
     for (const h of idx.search(question, 12)) {
       if (picked.length >= 4) break;
@@ -258,13 +297,14 @@ export default async function intelligence2Routes(app) {
       picked.push({ ...p, matched: h.matched }); h.matched.forEach((m) => covered.add(m));
     }
     const wAll = qTokens.reduce((s, t) => s + idx.idf(t), 0) || 1;
-    const coverage = qTokens.reduce((s, t) => s + (covered.has(t) ? idx.idf(t) : 0), 0) / wAll;
+    let coverage = qTokens.reduce((s, t) => s + (covered.has(t) ? idx.idf(t) : 0), 0) / wAll;
     const distinct = new Set(picked.map((p) => p.si)).size;
     const kbBest = arts[0];
     const fresh = kbBest ? ((Date.now() - new Date(kbBest.updated_at)) / DAY < 180 ? 1 : 0.5) : 0.5;
-    const confidence = round(clamp(0.6 * coverage + 0.25 * Math.min(distinct / 3, 1) + 0.15 * fresh, 0, 1), 3);
+    let confidence = round(clamp(0.6 * coverage + 0.25 * Math.min(distinct / 3, 1) + 0.15 * fresh, 0, 1), 3);
+    if (sem && sem.picked.length && sem.confidence > confidence) { ({ sources, picked, confidence, coverage } = sem); }
     const citations = picked.map((p) => ({ source: { type: sources[p.si].type, id: sources[p.si].id, label: sources[p.si].label, url: sources[p.si].url ?? null }, quote: p.s, matchedTerms: p.matched }));
-    const abstained = confidence < 0.35;
+    const abstained = confidence < 0.4;
     const answer = abstained ? '' : picked.map((p) => p.s).join(' ');
     const saved = await one(`INSERT INTO answer_provenance(org_id, ticket_id, question, answer, confidence, citations) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`, [req.auth.orgId, ticketId ?? null, question, answer, confidence, JSON.stringify(citations)]);
     return { id: saved.id, abstained, confidence, coverage: round(coverage, 3), answer: abstained ? null : answer, reason: abstained ? 'Confiance insuffisante : mieux vaut une reponse humaine qu\'une reponse inventee.' : undefined, citations };
