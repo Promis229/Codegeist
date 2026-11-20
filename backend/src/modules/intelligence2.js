@@ -42,7 +42,7 @@ async function semanticAnswer(orgId, question, solved) {
   // One language per answer: the question's own language when a good enough source exists in it, else the language of the best match.
   const qLang = detectLang(question);
   const same = ranked.filter((c) => c.lang === qLang);
-  const lang = same.length && same[0].score >= 0.32 && same[0].score >= ranked[0].score - 0.1 ? qLang : ranked[0].lang;
+  const lang = same.length && same[0].score >= 0.32 && same[0].score >= ranked[0].score - 0.03 ? qLang : ranked[0].lang;
   const pool = ranked.filter((c) => c.lang === lang);
   const top = pool[0].score;
   const picked = [];
