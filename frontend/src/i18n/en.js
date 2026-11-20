@@ -179,6 +179,7 @@ export default {
   'cp.ph': 'Ask the customer’s question…', 'cp.question': 'Question', 'cp.search': 'Find an answer',
   'cp.confidence': 'Confidence {n}%', 'cp.abstain': 'I’d rather not answer', 'cp.proposed': 'Suggested answer',
   'cp.noSource': 'No relevant source in the knowledge base or in past resolutions.',
+  'cp.emptyBase': 'Your knowledge base is empty, so Kairos has nothing to cite yet. Add an article, or resolve requests with a reply, then ask again.', 'cp.emptyAction': 'Add an article',
   'cp.lowConfidence': 'Not confident enough: a human reply beats an invented one.',
   'cp.stats': 'Confidence {a}%, question coverage {b}%', 'cp.sources': 'Sources', 'cp.insert': 'Insert into the reply', 'cp.useful': 'Helpful?',
   'cp.thanksYes': 'Thanks, marked as helpful', 'cp.thanksNo': 'Thanks, the copilot will use this to measure its relevance',

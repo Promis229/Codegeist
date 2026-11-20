@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { post } from '../lib/api.js';
 import { useAuth } from '../lib/auth.jsx';
 import { errText, useT } from '../i18n/index.jsx';
@@ -30,9 +31,10 @@ function AnswerResult({ res, onUse, rated, rate }) {
         <Ring value={res.confidence} size={52} tone={res.abstained ? 'var(--bad)' : res.confidence > 0.6 ? 'var(--good)' : 'var(--warn)'} label={t('cp.confidence', { n: pct(res.confidence) })} />
         <div>
           <p className="font-semibold">{res.abstained ? t('cp.abstain') : t('cp.proposed')}</p>
-          <p className="text-[13px] text-muted">{res.abstained ? t(res.confidence === 0 ? 'cp.noSource' : 'cp.lowConfidence') : t('cp.stats', { a: pct(res.confidence), b: pct(res.coverage) })}</p>
+          <p className="text-[13px] text-muted">{res.abstained ? t(res.emptyBase ? 'cp.emptyBase' : res.confidence === 0 ? 'cp.noSource' : 'cp.lowConfidence') : t('cp.stats', { a: pct(res.confidence), b: pct(res.coverage) })}</p>
         </div>
       </div>
+      {res.emptyBase && <Link to="/knowledge" className="btn btn-primary inline-flex"><Icon name="plus" size={15} /> {t('cp.emptyAction')}</Link>}
       {res.answer && (
         <>
           <p className="rounded-xl border border-accent/30 bg-accent/10 p-4 text-[14px] leading-relaxed">{res.answer}</p>

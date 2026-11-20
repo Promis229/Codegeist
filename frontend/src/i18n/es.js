@@ -179,6 +179,7 @@ export default {
   'cp.ph': 'Escribe la pregunta del cliente…', 'cp.question': 'Pregunta', 'cp.search': 'Buscar una respuesta',
   'cp.confidence': 'Confianza {n} %', 'cp.abstain': 'Prefiero no responder', 'cp.proposed': 'Respuesta propuesta',
   'cp.noSource': 'No hay ninguna fuente relevante en la base de conocimiento ni en las resoluciones pasadas.',
+  'cp.emptyBase': 'Tu base de conocimiento está vacía, así que Kairos aún no tiene nada que citar. Añade un artículo, o resuelve solicitudes con una respuesta, y vuelve a preguntar.', 'cp.emptyAction': 'Añadir un artículo',
   'cp.lowConfidence': 'Confianza insuficiente: mejor una respuesta humana que una inventada.',
   'cp.stats': 'Confianza {a} %, cobertura de la pregunta {b} %', 'cp.sources': 'Fuentes', 'cp.insert': 'Insertar en la respuesta', 'cp.useful': '¿Útil?',
   'cp.thanksYes': 'Gracias, marcada como útil', 'cp.thanksNo': 'Gracias, el copiloto lo usará para medir su acierto',

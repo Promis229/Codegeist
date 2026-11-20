@@ -62,6 +62,15 @@ describe('Recherche globale', () => {
     for (const q of ['50%', 'a_b', "l'erreur", '"guillemets"', 'a\\b', '%%']) assert.equal((await search(bruno, q)).status, 200, q);
     assert.equal((await search(bruno, '%%')).body.tickets.length, 0, '« % » ne doit pas tout renvoyer');
   });
+  it('copilote : une organisation sans contenu le dit clairement (base vide), une organisation remplie répond', async () => {
+    const empty = await call('POST', '/intel/answer', outsider, { question: 'comment aider mon client qui n a plus son compte' });
+    assert.equal(empty.status, 200);
+    assert.equal(empty.body.abstained, true);
+    assert.equal(empty.body.emptyBase, true, 'base vide signalée comme telle');
+    const full = await call('POST', '/intel/answer', bruno, { question: 'customer cannot log in reset password' });
+    assert.ok(!full.body.emptyBase);
+    assert.equal(full.body.abstained, false);
+  });
   it('refuse une requête trop courte', async () => {
     assert.equal((await search(bruno, 'e')).status, 400);
   });

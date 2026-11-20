@@ -270,6 +270,8 @@ export default async function intelligence2Routes(app) {
   // 17. Reponse sourcee : extractive, citations tracables, ABSTENTION si confiance faible
   // ======================================================================
   app.post('/intel/answer', agent, async (req) => {
+    // Base vide (ni article, ni resolution avec reponse) : on le dit, au lieu d'un « aucune source » qui ressemble a une panne.
+    const isEmpty = async (orgId) => Number((await one(`SELECT (SELECT count(*) FROM kb_articles WHERE org_id=$1) + (SELECT count(*) FROM ticket_comments c JOIN tickets t ON t.id=c.ticket_id WHERE t.org_id=$1 AND t.status IN ('resolved','closed') AND NOT c.author_is_customer AND NOT c.internal) AS n`, [orgId])).n) === 0;
     const { question, ticketId } = z.object({ question: z.string().trim().min(5).max(2000), ticketId: uuid.optional() }).parse(req.body);
     const arts = await searchKb(req.auth.orgId, question, 3);
     const solved = await many(
@@ -285,7 +287,7 @@ export default async function intelligence2Routes(app) {
     const sem = await semanticAnswer(req.auth.orgId, question, solved).catch(() => null);
     if (!pool.length && !sem?.picked.length) {
       const saved = await one(`INSERT INTO answer_provenance(org_id, ticket_id, question, answer, confidence, citations) VALUES ($1,$2,$3,'',0,'[]') RETURNING id`, [req.auth.orgId, ticketId ?? null, question]);
-      return { id: saved.id, abstained: true, confidence: 0, reason: 'Aucune source pertinente dans la base de connaissances ni dans les resolutions passees.', citations: [] };
+      return { id: saved.id, abstained: true, confidence: 0, emptyBase: await isEmpty(req.auth.orgId), reason: 'Aucune source pertinente dans la base de connaissances ni dans les resolutions passees.', citations: [] };
     }
     const idx = new BM25(pool.map((p, i) => ({ id: i, text: p.s })));
     const qTokens = [...new Set(tokenize(question))];
