@@ -24,6 +24,7 @@ LINES = [
     ("responsive", "And it fits every screen. Phone, tablet, desktop. Install it as an app, with an offline fallback. Light, or dark. Your choice."),
     ("brain", "Under the hood, Kairos Brain. An open-source multilingual model that we host ourselves. It estimates resolution time and reopening risk, but only after it beats simple baselines, in nested cross-validation and a permutation test. A model that doesn't pass is simply not served."),
     ("stack", "A Fastify and PostgreSQL API, a React frontend, and a Forge app with a Rovo agent for Jira. Deployed on Vercel, Neon and Modal. A hundred and fifty-three automated tests. And no paid API, anywhere."),
+    ("recap", "All of it, in one product. Installable as an app. In three languages. Light or dark. On any screen, even offline. With two-factor security, team chat and safe uploads, signed webhooks and API keys, and a Rovo agent with MCP tools."),
     ("outro", "Kairos. The right answer, at the right moment."),
 ]
 

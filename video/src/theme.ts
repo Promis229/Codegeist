@@ -26,7 +26,7 @@ export const H = 1080;
 export const LEAD = 14;
 const TAIL = 12;
 /** YouTube reviewers only watch the first 5 minutes: stay safely under. */
-export const TARGET_SECONDS = 293;
+export const TARGET_SECONDS = 289;
 
 export type Word = { text: string; start: number; end: number };
 type Line = { key: string; text: string; words: Word[] };
@@ -35,7 +35,7 @@ export const LINES = voiceover as Line[];
 // Relative breathing room after each line (extra visual time on scenes that need to be looked at).
 const PAD: Record<string, number> = {
   hook: 1.2, intro: 2.2, landing: 1.6, auth: 1.8, dashboard: 1.6, tickets: 1.4, copilot: 2, intelligence: 1.4, search: 1.5,
-  chat: 1.8, workspace: 1.5, settings: 1.4, languages: 1.6, responsive: 1.6, brain: 1.6, stack: 1.4, outro: 2.8,
+  chat: 1.8, workspace: 1.5, settings: 1.4, languages: 1.6, responsive: 1.6, brain: 1.6, stack: 1.4, recap: 1.4, outro: 2.8,
 };
 
 const voFrames = (l: Line) => Math.ceil((l.words[l.words.length - 1]?.end ?? 1) * FPS);

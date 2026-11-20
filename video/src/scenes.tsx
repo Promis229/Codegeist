@@ -7,7 +7,7 @@ import { C, LEAD, cue, mono, sans, scene, serif } from "./theme";
 
 const Chip: React.FC<React.ComponentProps<typeof BaseChip>> = (p) => (
   <>
-    <Sequence from={Math.max(0, p.at)} durationInFrames={20}><Audio src={staticFile("audio/pop.wav")} volume={0.22} /></Sequence>
+    <Sequence from={Math.max(0, p.at)} durationInFrames={40}><Audio src={staticFile("audio/pop.wav")} volume={0.11} /></Sequence>
     <BaseChip {...p} />
   </>
 );
@@ -473,6 +473,24 @@ export const Stack: React.FC = () => {
   );
 };
 
+/* ------------------------------------------------------------------ recap */
+
+export const Recap: React.FC = () => {
+  const items: [string, string, string][] = [
+    ["Installable app", "PWA · works offline", "installable"], ["3 languages", "fr · en · es, instantly", "languages"], ["Light & dark", "day and night themes", "dark"],
+    ["Any screen", "phone · tablet · desktop", "screen"], ["Two-factor security", "authenticator + backup codes", "two-factor"], ["Team chat", "replies · safe uploads", "chat"],
+    ["Webhooks & API keys", "signed · scoped", "webhooks"], ["Rovo agent", "7 actions for Jira", "Rovo"], ["MCP tools", "usable by external clients", "MCP"],
+  ];
+  return (
+    <SceneShell keyName="recap">
+      <div style={{ position: "absolute", left: 0, right: 0, top: 70, display: "flex", justifyContent: "center" }}><Headline eyebrow="Everything, in one product" lines={["All of it. Ready today."]} size={72} align="center" /></div>
+      <div style={{ position: "absolute", left: 160, top: 300, width: 1600, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 }}>
+        {items.map(([t, sub, k], i) => <Tile key={t} i={i} at={cue("recap", k, 0.1 + i * 0.09) - 14} w={510} h={160} label=""><div style={{ textAlign: "center" }}><div style={{ fontFamily: serif, fontSize: 40, fontWeight: 500, color: C.amberHi }}>{t}</div><div style={{ fontFamily: sans, fontSize: 22, color: C.muted, marginTop: 6 }}>{sub}</div></div></Tile>)}
+      </div>
+    </SceneShell>
+  );
+};
+
 /* ------------------------------------------------------------------ 17. outro */
 
 export const Outro: React.FC = () => {
@@ -495,6 +513,6 @@ export const Outro: React.FC = () => {
 
 export const SCENE_COMPONENTS: Record<string, React.FC> = {
   hook: Hook, intro: Intro, landing: Landing, auth: Auth, dashboard: Dashboard, tickets: Tickets, copilot: Copilot, intelligence: Intelligence,
-  search: Search, chat: Chat, workspace: Workspace, settings: Settings, languages: Languages, responsive: Responsive, brain: Brain, stack: Stack, outro: Outro,
+  search: Search, chat: Chat, workspace: Workspace, settings: Settings, languages: Languages, responsive: Responsive, brain: Brain, stack: Stack, recap: Recap, outro: Outro,
 };
 export { LEAD };
