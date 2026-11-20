@@ -32,7 +32,7 @@ export async function buildApp({ logger = !env.isTest } = {}) {
   await app.register(cors, {
     origin: [env.webUrl, 'http://localhost:5173', 'http://localhost:8080'],
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
-    allowedHeaders: ['Authorization', 'Content-Type'],
+    allowedHeaders: ['Authorization', 'Content-Type', 'X-Lang'],
     maxAge: 600,
   });
   await app.register(rateLimit, { global: true, max: env.isTest ? 10_000 : 300, timeWindow: '1 minute' });

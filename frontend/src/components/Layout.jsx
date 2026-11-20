@@ -14,7 +14,7 @@ import ErrorBoundary from './ErrorBoundary.jsx';
 import { NAV } from '../lib/nav.js';
 
 export default function Layout() {
-  const { t } = useT();
+  const { t, lang } = useT();
   const { me, logout, switchOrg, can } = useAuth();
   const [theme, toggle] = useTheme();
   const { status: installStatus, install } = useInstall();
@@ -106,7 +106,7 @@ export default function Layout() {
         <div className="mx-auto max-w-[1180px]">
           <GlobalSearch ref={search} className="relative z-[12] mb-8 w-full max-w-[560px]" />
           {/* Une page qui plante n'emporte ni le menu ni la recherche : seul son contenu est remplacé, et il se rétablit au changement de page. */}
-          <ErrorBoundary resetKey={loc.pathname}><Suspense fallback={<Skeleton className="h-64" />}><Outlet /></Suspense></ErrorBoundary>
+          <ErrorBoundary resetKey={loc.pathname}><Suspense key={lang} fallback={<Skeleton className="h-64" />}><Outlet /></Suspense></ErrorBoundary>
         </div>
       </main>
     </div>

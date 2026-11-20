@@ -6,6 +6,7 @@ import { randomToken, sha256 } from '../lib/crypto.js';
 import { badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
 import { sendMail } from '../lib/mailer.js';
 import { env } from '../config/env.js';
+import { loc, reqLang } from '../lib/lang.js';
 import { BM25, detectLang, excerpt } from '../lib/text.js';
 
 const uuid = z.string().uuid();
@@ -269,9 +270,9 @@ export default async function coreRoutes(app) {
              WHERE m.org_id=$1 AND u.disabled=false AND (u.display_name ILIKE $2 OR u.email::text ILIKE $2) ORDER BY u.display_name LIMIT 5`, [org, like]),
       many(`SELECT id, name FROM chat_channels WHERE org_id=$1 AND kind='channel' AND name ILIKE $2 ORDER BY name LIMIT 5`, [org, like]),
       // Messages : salons de l'organisation + messages directs dont l'utilisateur fait partie (jamais ceux des autres).
-      many(`SELECT m.id, m.channel_id, left(m.body, 140) AS body, c.kind, c.name, u.display_name AS author
+      many(`SELECT m.id, m.channel_id, left(m.body, 140) AS body, m.body_i18n, c.kind, c.name, u.display_name AS author
               FROM chat_messages m JOIN chat_channels c ON c.id=m.channel_id LEFT JOIN users u ON u.id=m.author_id
-             WHERE c.org_id=$1 AND (c.kind='channel' OR split_part(c.dm_key, ':', 1)=$3 OR split_part(c.dm_key, ':', 2)=$3) AND m.body ILIKE $2
+             WHERE c.org_id=$1 AND (c.kind='channel' OR split_part(c.dm_key, ':', 1)=$3 OR split_part(c.dm_key, ':', 2)=$3) AND (m.body ILIKE $2 OR m.body_i18n::text ILIKE $2)
              ORDER BY m.id DESC LIMIT 5`, [org, like, uid]),
       searchKb(org, q, 5),
       many('SELECT id, title FROM kb_articles WHERE org_id=$1 AND (title ILIKE $2 OR body ILIKE $2) ORDER BY updated_at DESC LIMIT 5', [org, like]),
@@ -283,7 +284,7 @@ export default async function coreRoutes(app) {
       tickets, customers, kb,
       members: members.map((m) => ({ id: m.id, name: m.display_name, email: m.email })),
       channels,
-      messages: messages.map((m) => ({ id: Number(m.id), channelId: m.channel_id, body: m.body, author: m.author, kind: m.kind, channel: m.name })),
+      messages: messages.map((m) => ({ id: Number(m.id), channelId: m.channel_id, body: loc(m.body_i18n, reqLang(req), m.body), author: m.author, kind: m.kind, channel: m.name })),
     };
   });
 }

@@ -13,9 +13,11 @@ const PROTECTED = new Set(['general']);
 const MAX_FILE = 3 * 1024 * 1024, MAX_TOTAL = 3 * 1024 * 1024, MAX_FILES = 4;
 const ORG_QUOTA = Number(process.env.CHAT_QUOTA_MB || 1024) * 1024 * 1024; // stockage total des pièces jointes par organisation
 
+import { loc, reqLang } from '../lib/lang.js';
+
 const MSG_SELECT = `
-  SELECT m.id, m.author_id, u.display_name AS author_name, u.avatar_url AS author_avatar, m.body, m.created_at, m.edited_at, m.reply_to,
-         rp.body AS reply_body, ru.display_name AS reply_author,
+  SELECT m.id, m.author_id, u.display_name AS author_name, u.avatar_url AS author_avatar, m.body, m.body_i18n, m.created_at, m.edited_at, m.reply_to,
+         rp.body AS reply_body, rp.body_i18n AS reply_i18n, ru.display_name AS reply_author,
          EXISTS (SELECT 1 FROM chat_attachments x WHERE x.message_id = rp.id) AS reply_files,
          (SELECT coalesce(json_agg(json_build_object('id', a.id, 'name', a.name, 'mime', a.mime, 'size', a.size) ORDER BY a.created_at), '[]'::json)
             FROM chat_attachments a WHERE a.message_id = m.id) AS attachments
@@ -45,12 +47,12 @@ async function channelFor(req, id) {
   return c;
 }
 
-const shape = (m) => ({
-  id: Number(m.id), authorId: m.author_id, authorName: m.author_name ?? null, authorAvatar: m.author_avatar ?? null, body: m.body, createdAt: m.created_at, editedAt: m.edited_at,
+const shape = (m, lang = null) => ({
+  id: Number(m.id), authorId: m.author_id, authorName: m.author_name ?? null, authorAvatar: m.author_avatar ?? null, body: loc(m.body_i18n, lang, m.body), createdAt: m.created_at, editedAt: m.edited_at,
   attachments: m.attachments ?? [],
   // Message cité (« répondre » façon messagerie) ; null si le message d'origine a été supprimé.
   replyTo: m.reply_to && m.reply_author !== undefined && m.reply_body !== null
-    ? { id: Number(m.reply_to), authorName: m.reply_author ?? null, body: excerpt(m.reply_body, 140), files: !!m.reply_files } : null,
+    ? { id: Number(m.reply_to), authorName: m.reply_author ?? null, body: excerpt(loc(m.reply_i18n, lang, m.reply_body), 140), files: !!m.reply_files } : null,
 });
 
 /** Reference les demandes citees dans les messages (ex. ACM-12) pour que l'interface les rende cliquables. */
@@ -70,12 +72,12 @@ export default async function chatRoutes(app) {
     const { orgId, userId } = req.auth;
     await ensureMembership(orgId, userId);
     const rows = await many(
-      `SELECT c.id, c.kind, c.name, c.topic, c.dm_key, c.created_at,
+      `SELECT c.id, c.kind, c.name, c.topic, c.topic_i18n, c.dm_key, c.created_at,
               (SELECT count(*) FROM chat_messages m WHERE m.channel_id=c.id AND m.id > cm.last_read_id AND m.author_id IS DISTINCT FROM $2)::int AS unread,
-              lm.body AS last_body, lm.created_at AS last_at, lm.author_id AS last_author
+              lm.body AS last_body, lm.body_i18n AS last_i18n, lm.created_at AS last_at, lm.author_id AS last_author
          FROM chat_channels c
          JOIN chat_members cm ON cm.channel_id=c.id AND cm.user_id=$2
-         LEFT JOIN LATERAL (SELECT body, created_at, author_id, EXISTS (SELECT 1 FROM chat_attachments a WHERE a.message_id = chat_messages.id) AS has_files
+         LEFT JOIN LATERAL (SELECT body, body_i18n, created_at, author_id, EXISTS (SELECT 1 FROM chat_attachments a WHERE a.message_id = chat_messages.id) AS has_files
                               FROM chat_messages WHERE channel_id=c.id ORDER BY id DESC LIMIT 1) lm ON true
         WHERE c.org_id=$1
         ORDER BY coalesce(lm.created_at, c.created_at) DESC`,
@@ -84,12 +86,13 @@ export default async function chatRoutes(app) {
     const peerIds = rows.filter((r) => r.kind === 'dm').map((r) => r.dm_key.split(':').find((x) => x !== userId));
     const peers = peerIds.length ? await many('SELECT id, display_name FROM users WHERE id = ANY($1)', [peerIds]) : [];
     const name = new Map(peers.map((p) => [p.id, p.display_name]));
+    const lang = reqLang(req);
     const channels = rows.map((r) => {
       const peerId = r.kind === 'dm' ? r.dm_key.split(':').find((x) => x !== userId) : null;
       return {
-        id: r.id, kind: r.kind, name: r.name, topic: r.topic, unread: r.unread,
+        id: r.id, kind: r.kind, name: r.name, topic: loc(r.topic_i18n, lang, r.topic), unread: r.unread,
         peer: peerId ? { id: peerId, name: name.get(peerId) ?? null } : null,
-        last: r.last_at ? { body: r.last_body.slice(0, 140), at: r.last_at, mine: r.last_author === userId, files: r.has_files } : null,
+        last: r.last_at ? { body: loc(r.last_i18n, lang, r.last_body).slice(0, 140), at: r.last_at, mine: r.last_author === userId, files: r.has_files } : null,
       };
     });
     return { channels, unread: channels.reduce((s, c) => s + c.unread, 0) };
@@ -156,10 +159,11 @@ export default async function chatRoutes(app) {
     } else {
       rows = (await many(`${MSG_SELECT} WHERE m.channel_id=$1 AND ($2::bigint IS NULL OR m.id < $2) ORDER BY m.id DESC LIMIT $3`, [id, q.before ?? null, q.limit])).reverse();
     }
-    const messages = rows.map(shape);
+    const lang = reqLang(req);
+    const messages = rows.map((m) => shape(m, lang));
     const me = await one('SELECT last_read_id FROM chat_members WHERE channel_id=$1 AND user_id=$2', [id, req.auth.userId]);
     return {
-      channel: { id: c.id, kind: c.kind, name: c.name, topic: c.topic },
+      channel: { id: c.id, kind: c.kind, name: c.name, topic: loc(c.topic_i18n, lang, c.topic) },
       messages, hasMore: q.after === undefined && rows.length === q.limit,
       lastReadId: Number(me?.last_read_id ?? 0), tickets: await citedTickets(req.auth.orgId, messages),
     };
@@ -206,7 +210,7 @@ export default async function chatRoutes(app) {
     );
     const m = await one(`${MSG_SELECT} WHERE m.id=$1`, [mid]);
     reply.code(201);
-    return { ...shape(m), tickets: await citedTickets(req.auth.orgId, [m]) };
+    return { ...shape(m, reqLang(req)), tickets: await citedTickets(req.auth.orgId, [m]) };
   });
 
   // Téléchargement : authentifié et limité aux membres de la conversation. Les images s'affichent, le reste se télécharge ;
@@ -253,8 +257,8 @@ export default async function chatRoutes(app) {
     const { body } = z.object({ body: z.string().trim().min(1).max(4000) }).parse(req.body);
     const m = await ownMessage(req, id);
     if (m.author_id !== req.auth.userId) throw forbidden('Seul l\'auteur peut modifier son message');
-    await query('UPDATE chat_messages SET body=$2, edited_at=now() WHERE id=$1', [id, body]);
-    return shape(await one(`${MSG_SELECT} WHERE m.id=$1`, [id]));
+    await query('UPDATE chat_messages SET body=$2, body_i18n=NULL, edited_at=now() WHERE id=$1', [id, body]);
+    return shape(await one(`${MSG_SELECT} WHERE m.id=$1`, [id]), reqLang(req));
   });
 
   app.delete('/chat/messages/:id', write, async (req) => {

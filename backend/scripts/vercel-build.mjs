@@ -13,6 +13,12 @@ const { pool } = await import('../src/db/pool.js');
 
 try {
   await migrate();
-  if (env.seedDemo) { const { seedDemo } = await import('../src/db/seed.js'); await seedDemo(); }
+  if (env.seedDemo) {
+    const { seedDemo, resetDemo } = await import('../src/db/seed.js');
+    // Jeu de démonstration créé avant les versions multilingues : on le recrée (il ne touche jamais une autre organisation).
+    const old = await pool.query("SELECT 1 FROM chat_messages m JOIN chat_channels c ON c.id=m.channel_id JOIN orgs o ON o.id=c.org_id WHERE o.slug='acme' AND m.body_i18n IS NULL LIMIT 1");
+    if (old.rowCount) { console.log('démo : recréation avec contenus multilingues'); await resetDemo(); }
+    await seedDemo();
+  }
   console.log('base prête');
 } finally { await pool.end(); }

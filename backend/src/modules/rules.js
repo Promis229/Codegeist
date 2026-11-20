@@ -1,3 +1,4 @@
+import { loc, reqLang } from '../lib/lang.js';
 import { z } from 'zod';
 import { many, one, query } from '../db/pool.js';
 import { audit } from '../lib/audit.js';
@@ -106,7 +107,7 @@ export default async function rulesRoutes(app) {
   });
 
   app.get('/rules', { preHandler: app.guard('agent') }, async (req) => ({
-    rules: await many('SELECT * FROM rules WHERE org_id=$1 ORDER BY priority, created_at', [req.auth.orgId]),
+    rules: (await many('SELECT * FROM rules WHERE org_id=$1 ORDER BY priority, created_at', [req.auth.orgId])).map(({ name_i18n, ...r }) => ({ ...r, name: loc(name_i18n, reqLang(req), r.name) })),
     fields: FIELDS, operators: OPS,
   }));
 

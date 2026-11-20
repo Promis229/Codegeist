@@ -196,10 +196,10 @@ export async function seedDemo(log = console.log) {
     }
     await db.query(`INSERT INTO deploys(org_id, name, version, component, deployed_at) VALUES ($1,'API gateway','v3.8.0','api',$2), ($1,'Checkout service','v2.14.0','checkout',$3), ($1,'Mobile app','v4.2.0','mobile',$4)`, [org.id, ago(24 * 20), ago(7), ago(24 * 9)]);
 
-    await db.query(`INSERT INTO rules(org_id, name, priority, condition, actions) VALUES
-      ($1,'Clients enterprise : priorite haute', 10, '{"all":[{"field":"customer.tier","op":"eq","value":"enterprise"},{"field":"priority","op":"in","value":["low","medium"]}]}', '[{"type":"set_priority","value":"high"},{"type":"add_tag","value":"vip"}]'),
-      ($1,'Menace de depart : escalade', 20, '{"field":"text","op":"containsAny","value":["resilier","cancel","changer de fournisseur","switch to"]}', '[{"type":"escalate"},{"type":"notify","value":"ticket.churn_risk"}]'),
-      ($1,'Francophone : agent de langue', 30, '{"field":"lang","op":"eq","value":"fr"}', '[{"type":"assign","value":"lang_match"}]')`, [org.id]);
+    await db.query(`INSERT INTO rules(org_id, name, name_i18n, priority, condition, actions) VALUES
+      ($1,'Clients enterprise : priorite haute', '{"fr":"Clients enterprise : priorité haute","en":"Enterprise customers: high priority","es":"Clientes enterprise: prioridad alta"}', 10, '{"all":[{"field":"customer.tier","op":"eq","value":"enterprise"},{"field":"priority","op":"in","value":["low","medium"]}]}', '[{"type":"set_priority","value":"high"},{"type":"add_tag","value":"vip"}]'),
+      ($1,'Menace de depart : escalade', '{"fr":"Menace de départ : escalade","en":"Churn threat: escalate","es":"Amenaza de baja: escalar"}', 20, '{"field":"text","op":"containsAny","value":["resilier","cancel","changer de fournisseur","switch to"]}', '[{"type":"escalate"},{"type":"notify","value":"ticket.churn_risk"}]'),
+      ($1,'Francophone : agent de langue', '{"fr":"Francophone : agent de même langue","en":"French speaker: language-matched agent","es":"Francófono: agente del mismo idioma"}', 30, '{"field":"lang","op":"eq","value":"fr"}', '[{"type":"assign","value":"lang_match"}]')`, [org.id]);
 
     let seq = 0;
     const insert = async ({ title, body, comp, cust, status, prio, createdH, assignee, reopened = 0, agentReplyMin = null, resolveH = null, kb = null, followUp = null, internal = null, tags = [] }) => {
@@ -283,20 +283,21 @@ export async function seedDemo(log = console.log) {
     const incidentKey = (await db.one(`SELECT key FROM tickets WHERE org_id=$1 AND 'incident' = ANY(tags) ORDER BY seq LIMIT 1`, [org.id])).key;
     const hotKey = (await db.one(`SELECT key FROM tickets WHERE org_id=$1 AND title=$2 ORDER BY seq DESC LIMIT 1`, [org.id, HOT.title])).key;
     const [alice, bruno, chen, dana] = users;
-    const channel = async (name, topic, by) => (await db.one(`INSERT INTO chat_channels(org_id, kind, name, topic, created_by) VALUES ($1,'channel',$2,$3,$4) RETURNING id`, [org.id, name, topic, by.id])).id;
+    const channel = async (name, topic, by) => (await db.one(`INSERT INTO chat_channels(org_id, kind, name, topic, topic_i18n, created_by) VALUES ($1,'channel',$2,$3,$4,$5) RETURNING id`, [org.id, name, topic?.fr ?? null, topic ? JSON.stringify(topic) : null, by.id])).id;
     const general = await channel('general', null, alice);
-    const incidents = await channel('incidents', 'Pannes en cours et coordination', alice);
+    const incidents = await channel('incidents', { fr: 'Pannes en cours et coordination', en: 'Ongoing outages and coordination', es: 'Incidencias en curso y coordinación' }, alice);
     const dm = (await db.one(`INSERT INTO chat_channels(org_id, kind, dm_key, created_by) VALUES ($1,'dm',$2,$3) RETURNING id`, [org.id, [alice.id, bruno.id].sort().join(':'), alice.id])).id;
-    const say = async (ch, who, minutesAgo, body, replyTo = null) => (await db.one('INSERT INTO chat_messages(channel_id, author_id, body, created_at, reply_to) VALUES ($1,$2,$3,$4,$5) RETURNING id', [ch, who.id, body, new Date(Date.now() - minutesAgo * 60000), replyTo])).id;
-    await say(general, alice, 60 * 26, 'Bonjour à tous. Point rapide demain à 9 h : la file critique et les relances de la semaine.');
-    await say(general, dana, 60 * 25, 'Je prends les demandes de facturation de la nuit.');
-    await say(general, chen, 60 * 9, `Le client de ${hotKey} a relancé trois fois. Je lui écris avant midi.`);
-    await say(general, alice, 60 * 8, `Merci Chen. Si la réponse tarde, passe-moi ${hotKey}, je l'appelle.`);
-    const firstIncident = await say(incidents, bruno, 55, `Pic de demandes sur le paiement depuis le dernier déploiement. Premier cas : ${incidentKey}.`);
-    await say(incidents, dana, 49, 'Même symptôme côté facturation : erreur 502 à la validation de la commande.', firstIncident);
-    const lastIncident = await say(incidents, bruno, 40, 'Je regroupe tout sous une seule demande parente et je préviens les clients concernés.');
-    await say(dm, alice, 120, 'Bruno, peux-tu vérifier le pare-feu de l\'API avant la fin de journée ?');
-    await say(dm, bruno, 100, 'Oui, je regarde ça cet après-midi et je te dis.');
+    // `text` : chaine, ou { fr, en, es } pour afficher le message dans la langue de l'interface (colonne body_i18n).
+    const say = async (ch, who, minutesAgo, text, replyTo = null) => (await db.one('INSERT INTO chat_messages(channel_id, author_id, body, body_i18n, created_at, reply_to) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id', [ch, who.id, typeof text === 'string' ? text : text.fr, typeof text === 'string' ? null : JSON.stringify(text), new Date(Date.now() - minutesAgo * 60000), replyTo])).id;
+    await say(general, alice, 60 * 26, { fr: "Bonjour à tous. Point rapide demain à 9 h : la file critique et les relances de la semaine.", en: "Morning everyone. Quick sync tomorrow at 9 am: the critical queue and this week's follow-ups.", es: "Buenos días a todos. Reunión rápida mañana a las 9 h: la cola crítica y los seguimientos de la semana." });
+    await say(general, dana, 60 * 25, { fr: "Je prends les demandes de facturation de la nuit.", en: "I'll take the overnight billing requests.", es: "Me encargo de las solicitudes de facturación de la noche." });
+    await say(general, chen, 60 * 9, { fr: `Le client de ${hotKey} a relancé trois fois. Je lui écris avant midi.`, en: `The customer on ${hotKey} has followed up three times. I'll write to them before noon.`, es: `El cliente de ${hotKey} ha insistido tres veces. Le escribo antes del mediodía.` });
+    await say(general, alice, 60 * 8, { fr: `Merci Chen. Si la réponse tarde, passe-moi ${hotKey}, je l'appelle.`, en: `Thanks Chen. If the reply is slow, hand ${hotKey} over to me and I'll call them.`, es: `Gracias, Chen. Si la respuesta tarda, pásame ${hotKey} y lo llamo.` });
+    const firstIncident = await say(incidents, bruno, 55, { fr: `Pic de demandes sur le paiement depuis le dernier déploiement. Premier cas : ${incidentKey}.`, en: `Spike in payment requests since the last deployment. First case: ${incidentKey}.`, es: `Pico de solicitudes de pago desde el último despliegue. Primer caso: ${incidentKey}.` });
+    await say(incidents, dana, 49, { fr: "Même symptôme côté facturation : erreur 502 à la validation de la commande.", en: "Same symptom on the billing side: 502 error when the order is confirmed.", es: "Mismo síntoma en facturación: error 502 al confirmar el pedido." }, firstIncident);
+    const lastIncident = await say(incidents, bruno, 40, { fr: "Je regroupe tout sous une seule demande parente et je préviens les clients concernés.", en: "I'm grouping everything under a single parent request and notifying the affected customers.", es: "Lo agrupo todo en una única solicitud principal y aviso a los clientes afectados." });
+    await say(dm, alice, 120, { fr: "Bruno, peux-tu vérifier le pare-feu de l'API avant la fin de journée ?", en: "Bruno, can you check the API firewall before the end of the day?", es: "Bruno, ¿puedes revisar el firewall de la API antes de que acabe el día?" });
+    await say(dm, bruno, 100, { fr: "Oui, je regarde ça cet après-midi et je te dis.", en: "Yes, I'll look at it this afternoon and let you know.", es: "Sí, lo reviso esta tarde y te cuento." });
     // Leur dernier passage : chacun a lu jusqu'a un point different, ce qui donne de vrais compteurs de messages non lus.
     const lastOf = async (ch) => (await db.one('SELECT max(id) AS id FROM chat_messages WHERE channel_id=$1', [ch])).id;
     for (const [ch, who, readUpTo] of [[general, alice, await lastOf(general)], [general, bruno, await lastOf(general)], [incidents, alice, lastIncident - 2], [incidents, bruno, lastIncident - 2], [dm, alice, 0], [dm, bruno, await lastOf(dm)]]) {

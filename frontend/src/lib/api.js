@@ -1,3 +1,4 @@
+import { getLang } from '../i18n/index.jsx';
 // Client API : jeton d'acces en memoire, refresh token en localStorage, rotation automatique sur 401.
 export const BASE = import.meta.env.VITE_API_URL || '/api/v1';
 const RT = 'kairos.refresh';
@@ -29,6 +30,7 @@ export const tokens = {
 async function send(path, { method = 'GET', body, auth = true, signal } = {}) {
   const headers = {};
   if (body !== undefined) headers['Content-Type'] = 'application/json';
+  headers['X-Lang'] = getLang(); // contenus d'amorce affichés dans la langue de l'interface
   if (auth && access) headers.Authorization = `Bearer ${access}`;
   const res = await fetch(`${BASE}${path}`, { method, headers, body: body !== undefined ? JSON.stringify(body) : undefined, signal });
   const ct = res.headers.get('content-type') || '';
