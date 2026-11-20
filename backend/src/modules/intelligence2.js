@@ -12,6 +12,12 @@ const DAY = 86_400_000;
 const HOUR = 3_600_000;
 
 /** Heure/jour locaux d'un instant dans un fuseau IANA (repli UTC si fuseau invalide). */
+const ENT = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', eacute: 'é', egrave: 'è', ecirc: 'ê', euml: 'ë', agrave: 'à', acirc: 'â', ccedil: 'ç', icirc: 'î', iuml: 'ï', ocirc: 'ô', ugrave: 'ù', ucirc: 'û', Eacute: 'É', ntilde: 'ñ', aacute: 'á', iacute: 'í', oacute: 'ó', uacute: 'ú', iexcl: '¡', iquest: '¿', rsquo: '’', lsquo: '‘', hellip: '…' };
+/** Articles imported from Confluence can carry HTML entities: show real characters, never "Donn&eacute;es". */
+const plain = (t) => String(t ?? '').replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n))).replace(/&([a-zA-Z]+);/g, (m, k) => ENT[k] ?? m);
+/** A usable answer sentence: ends like a sentence (titles and labels are not answers). */
+const isSentence = (t) => /[.!?…]$/.test(String(t).trim()) || String(t).trim().split(/\s+/).length >= 7;
+
 /**
  * Reponse sourcee, version SEMANTIQUE (service d'IA) : retrouve les phrases qui repondent a la question meme sans mot en commun
  * ou dans une autre langue (question en francais, article en anglais). Renvoie null si le service est indisponible : l'appelant
@@ -22,11 +28,11 @@ async function semanticAnswer(orgId, question, solved) {
   if (mlOpen()) resetMlBreaker(); // ici on peut attendre : mieux vaut patienter que conclure a tort « aucune source »
   const kb = await many('SELECT id, title, url, body, updated_at FROM kb_articles WHERE org_id=$1 ORDER BY updated_at DESC LIMIT 60', [orgId]);
   const src = [
-    ...kb.map((a) => ({ type: 'kb', id: a.id, label: a.title, url: a.url, text: `${a.title}. ${a.body}`, updatedAt: a.updated_at })),
+    ...kb.map((a) => ({ type: 'kb', id: a.id, label: a.title, url: a.url, text: plain(a.body), updatedAt: a.updated_at })),
     ...solved.filter((t) => t.answers).slice(0, 80).map((t) => ({ type: 'ticket', id: t.id, label: t.key, text: t.answers })),
   ];
   const cands = [];
-  src.forEach((x, si) => sentences(x.text).slice(0, 12).forEach((t, k) => { if (cands.length < 400) cands.push({ id: `${si}:${k}`, s: t, si, lang: detectLang(t) }); }));
+  src.forEach((x, si) => sentences(x.text).filter(isSentence).slice(0, 12).forEach((t, k) => { if (cands.length < 400) cands.push({ id: `${si}:${k}`, s: t, si, lang: detectLang(t) }); }));
   if (!cands.length) return null;
   const r = await mlCall('/v1/search', { query: scrub(question), top_k: 12, candidates: cands.map((c) => ({ id: c.id, text: scrub(c.s) })) }, { timeoutMs: 50_000 });
   if (!r?.results?.length) return null;
@@ -36,7 +42,7 @@ async function semanticAnswer(orgId, question, solved) {
   // One language per answer: the question's own language when a good enough source exists in it, else the language of the best match.
   const qLang = detectLang(question);
   const same = ranked.filter((c) => c.lang === qLang);
-  const lang = same.length && same[0].score >= 0.27 && same[0].score >= ranked[0].score - 0.15 ? qLang : ranked[0].lang;
+  const lang = same.length && same[0].score >= 0.32 && same[0].score >= ranked[0].score - 0.1 ? qLang : ranked[0].lang;
   const pool = ranked.filter((c) => c.lang === lang);
   const top = pool[0].score;
   const picked = [];
@@ -285,13 +291,13 @@ export default async function intelligence2Routes(app) {
     const sIdx = new BM25(solved.map((s) => ({ id: s.id, text: `${s.title} ${s.body}` })));
     const sim = sIdx.search(question, 3).map((h) => ({ ...solved.find((s) => s.id === h.id), score: h.score }));
     let sources = [
-      ...arts.map((a) => ({ type: 'kb', id: a.id, label: a.title, url: a.url, rank: a.score, text: a.body, updatedAt: a.updated_at })),
+      ...arts.map((a) => ({ type: 'kb', id: a.id, label: a.title, url: a.url, rank: a.score, text: plain(a.body), updatedAt: a.updated_at })),
       ...sim.filter((s) => s.answers).map((s) => ({ type: 'ticket', id: s.id, label: s.key, rank: 0.7, text: s.answers })),
     ];
     const qLang = detectLang(question);
     const sameLang = sources.filter((x) => detectLang(x.text) === qLang);
     if (sameLang.length) sources = sameLang; // never mix the language versions of an article in one answer
-    const pool = sources.flatMap((src, si) => sentences(src.text).map((s) => ({ s, si })));
+    const pool = sources.flatMap((src, si) => sentences(src.text).filter(isSentence).map((s) => ({ s, si })));
     const sem = await semanticAnswer(req.auth.orgId, question, solved).catch(() => null);
     if (!pool.length && !sem?.picked.length) {
       const saved = await one(`INSERT INTO answer_provenance(org_id, ticket_id, question, answer, confidence, citations) VALUES ($1,$2,$3,'',0,'[]') RETURNING id`, [req.auth.orgId, ticketId ?? null, question]);
@@ -312,7 +318,7 @@ export default async function intelligence2Routes(app) {
     const distinct = new Set(picked.map((p) => p.si)).size;
     const kbBest = arts[0];
     const fresh = kbBest ? ((Date.now() - new Date(kbBest.updated_at)) / DAY < 180 ? 1 : 0.5) : 0.5;
-    let confidence = round(clamp(0.6 * coverage + 0.25 * Math.min(distinct / 3, 1) + 0.15 * fresh, 0, 1), 3);
+    let confidence = round(clamp(0.6 * coverage + 0.25 * Math.min(distinct / 2, 1) + 0.15 * fresh, 0, 1), 3);
     if (sem && sem.picked.length && sem.confidence > confidence) { ({ sources, picked, confidence, coverage } = sem); }
     const citations = picked.map((p) => ({ source: { type: sources[p.si].type, id: sources[p.si].id, label: sources[p.si].label, url: sources[p.si].url ?? null }, quote: p.s, matchedTerms: p.matched }));
     const abstained = confidence < 0.4;
