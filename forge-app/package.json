@@ -9,5 +9,14 @@
     "lint": "forge lint",
     "deploy": "forge deploy",
     "tunnel": "forge tunnel"
+  },
+  "dependencies": {
+    "@forge/api": "^8.5.0",
+    "@forge/bridge": "^7.3.0",
+    "@forge/react": "^12.5.0",
+    "react": "^18.3.1"
+  },
+  "devDependencies": {
+    "@forge/cli": "^14.2.0"
   }
 }
