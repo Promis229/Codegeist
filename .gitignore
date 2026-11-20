@@ -13,3 +13,5 @@ __pycache__/
 .venv/
 template*.mp4
 *.Zone.Identifier
+*:Zone.Identifier
+/kairos-demo.mp4
