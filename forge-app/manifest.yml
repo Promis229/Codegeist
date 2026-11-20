@@ -174,7 +174,7 @@ modules:
 remotes:
   - key: kairos-backend
     # A REMPLACER par l'URL publique HTTPS de votre backend (voir README, section Deploiement).
-    baseUrl: https://kairos-api.example.com
+    baseUrl: https://kairos-api-omega.vercel.app
     operations:
       - compute
     storage:
@@ -194,7 +194,7 @@ permissions:
     fetch:
       backend:
         # Les fonctions (actions Rovo, declencheurs) appellent le backend avec une cle d'API : l'egress doit etre declare.
-        - address: kairos-api.example.com
+        - address: kairos-api-omega.vercel.app
           category: analytics
           inScopeEUD: false
 
