@@ -1,77 +1,85 @@
 # Kairos Brain
 
-Les modèles d'IA de Kairos : entraînés sur **vos** demandes, servis à part, branchés directement au backend.
+Kairos' AI models: trained on **your** requests, served separately, wired directly into the backend.
 
-## Ce qui est entraîné
+## What is trained
 
-| Modèle | Entrée → sortie | Contrôle avant de le servir |
+| Model | Input → output | Check before serving it |
 |---|---|---|
-| Plongement multilingue (`paraphrase-multilingual-MiniLM-L12-v2`, pré-entraîné, gelé) | texte → vecteur de 384 nombres, même sens = proches, quelle que soit la langue | recherche entre langues évaluée contre TF-IDF |
-| Priorité | texte + offre du client + canal → priorité probable | macro-F1 > meilleure référence + marge, p-valeur de permutation ≤ 0,05 |
-| Composant | texte → composant probable | idem |
-| Délai de résolution | texte + contexte → quantiles P10…P95, probabilité de dépasser le SLA | perte *pinball* meilleure que « quantiles par priorité », IC95 % du gain excluant 0, couverture 80 % honnête |
-| Risque de réouverture | texte + contexte → probabilité | PR-AUC > prévalence + marge, p-valeur de permutation ≤ 0,05 |
+| Multilingual embedding (`paraphrase-multilingual-MiniLM-L12-v2`, pre-trained, frozen) | text → 384-number vector; same meaning = close, whatever the language | cross-language search evaluated against TF-IDF |
+| Priority | text + customer plan + channel → likely priority | macro-F1 > best baseline + margin, permutation p-value ≤ 0.05 |
+| Component | text → likely component | same |
+| Resolution time | text + context → quantiles P10…P95, probability of breaching the SLA | pinball loss better than "quantiles per priority", 95% CI of the gain excluding 0, honest 80% coverage |
+| Reopening risk | text + context → probability | PR-AUC > prevalence + margin, permutation p-value ≤ 0.05 |
 
-Chaque prédiction renvoie les cas passés les plus proches comme **preuve**.
+Every prediction returns the closest past cases as **evidence**.
 
-## Pourquoi des « références » et une « barrière de qualité »
+## Why "baselines" and a "quality gate"
 
-Un modèle ne vaut que s'il fait mieux que ce qu'on obtiendrait sans lui. L'évaluation compare donc chaque modèle à la classe
-majoritaire, à TF-IDF + régression logistique et aux quantiles par priorité, en **validation croisée imbriquée** (les
-hyperparamètres ne voient jamais le pli de test) et avec un **test de permutation** (le modèle doit battre ses propres
-étiquettes mélangées). Si une tâche échoue, le service répond 503 pour elle et le backend retombe sur son algorithme lexical :
-on ne sert jamais un modèle qui ne vaut pas mieux qu'une règle simple. La fiche `models/model_card.json` garde les métriques,
-l'empreinte des données et les versions.
+A model is only worth what it adds over what you would get without it. The evaluation therefore compares each model with the
+majority class, TF-IDF + logistic regression and per-priority quantiles, using **nested cross-validation** (hyper-parameters never
+see the test fold) and a **permutation test** (the model must beat its own shuffled labels). If a task fails, the service answers
+503 for it and the backend falls back to its lexical algorithm: a model that is not better than a simple rule is never served.
+The `models/model_card.json` file keeps the metrics, the data fingerprint and the versions.
 
-## Entraîner
+## Train
 
 ```bash
 python3 -m venv .venv && . .venv/bin/activate
-pip install torch --index-url https://download.pytorch.org/whl/cpu     # CPU : pas de GPU requis
+pip install torch --index-url https://download.pytorch.org/whl/cpu     # CPU only: no GPU required
 pip install -r requirements.txt
 
-# a) depuis l'API Kairos (clé d'API de portée « admin » ; le texte est masqué côté backend)
+# a) from the Kairos API (API key with the "admin" scope; the text is masked on the backend side)
 python -m kairos_brain train --api http://localhost:4000 --key kai_xxxxx --out models
-# b) ou depuis un export déjà téléchargé
+# b) or from an export you already downloaded
 python -m kairos_brain train --file data/export.json --out models
 ```
 
-Le notebook `notebooks/kairos_brain_training.ipynb` fait la même chose avec l'audit des données, les graphiques, l'explication
-d'une prédiction et un test du service. Il se régénère avec `python notebooks/build_notebook.py` et se vérifie sans Jupyter avec
+The notebook `notebooks/kairos_brain_training.ipynb` does the same with data auditing, charts, the explanation of one
+prediction and a service test. It is regenerated with `python notebooks/build_notebook.py` and checked without Jupyter with
 `python notebooks/run_notebook_check.py`.
 
-## Déployer à part et brancher
+## Deploy separately and connect
 
 ```bash
-docker build -t kairos-brain ./ml          # télécharge le modèle de plongement une fois, au build
+docker build -t kairos-brain ./ml          # downloads the embedding model once, at build time
 docker run -p 8100:8100 -e KAIROS_ML_API_KEY=<secret> -v $(pwd)/ml/models:/app/models kairos-brain
-# ou : docker compose --profile ml up --build
+# or: docker compose --profile ml up --build
 
-# backend :
+# backend:
 ML_URL=http://kairos-brain:8100   ML_API_KEY=<secret>
 ```
 
-Après un ré-entraînement : `POST /v1/reload` recharge le modèle sans redémarrage.
+**Serverless alternative (Modal, free Starter plan, scales to zero):**
 
-| Route du service | Rôle |
+```bash
+pip install modal && modal setup
+modal secret create kairos-ml KAIROS_ML_API_KEY=<secret> KAIROS_ENV=production
+modal deploy ml/modal_app.py            # prints https://<account>--kairos-brain-web.modal.run  → ML_URL
+```
+
+After retraining, `POST /v1/reload` reloads the model without a restart.
+
+| Service route | Role |
 |---|---|
-| `GET /health` | sonde de santé (publique) |
-| `GET /v1/model` | fiche du modèle : version, métriques, barrières |
-| `POST /v1/search` | recherche sémantique multilingue |
-| `POST /v1/predict/triage` | priorité et composant, avec preuves |
-| `POST /v1/predict/risk` | délai (quantiles), réouverture, dépassement de SLA |
-| `POST /v1/reload` | recharge le modèle depuis le disque |
+| `GET /health` | health probe (public) |
+| `GET /v1/model` | model card: version, metrics, quality gates |
+| `POST /v1/search` | multilingual semantic search |
+| `POST /v1/predict/triage` | priority and component, with evidence |
+| `POST /v1/predict/risk` | resolution time (quantiles), reopening, SLA breach |
+| `POST /v1/reload` | reloads the model from disk |
 
-Routes du backend qui s'appuient dessus (avec repli automatique) : `GET /ml/export`, `GET /ml/status`, `GET /ml/monitoring`,
-`POST /intel/semantic/search`, `GET /intel/tickets/:id/semantic-similar`, `GET /intel/tickets/:id/risk`, `POST /intel/triage/priority`.
+Backend routes that rely on it (with automatic fallback): `GET /ml/export`, `GET /ml/status`, `GET /ml/monitoring`,
+`POST /ml/warm`, `POST /intel/semantic/search`, `GET /intel/tickets/:id/semantic-similar`, `GET /intel/tickets/:id/risk`,
+`POST /intel/triage/priority`, and the copilot's sourced answer (`POST /intel/answer`).
 
-## Vie privée
+## Privacy
 
-Le backend masque les données personnelles (e-mails, téléphones, IBAN…) **avant** d'exporter pour l'entraînement et avant chaque
-appel au service. L'export est réservé aux administrateurs et journalisé. Le service tourne chez vous.
+The backend masks personal data (e-mails, phone numbers, IBANs…) **before** exporting for training and before every call to the
+service. The export is reserved to administrators and logged. The service runs on infrastructure you control.
 
-## Limites
+## Limits
 
-* Les métriques dépendent de la taille du jeu : en dessous de quelques centaines de demandes elles sont bruitées.
-* Les mesures de risque sont observationnelles ; ne jamais fonder une décision irréversible sur une prédiction seule.
-* `KAIROS_EMBEDDER=hash` (plongement de test) n'existe que pour les tests automatiques : il ne comprend pas le sens.
+* Metrics depend on the size of the data set: below a few hundred requests they are noisy.
+* Risk estimates are observational; never base an irreversible decision on a single prediction.
+* `KAIROS_EMBEDDER=hash` (test embedding) exists only for automated tests: it does not understand meaning.

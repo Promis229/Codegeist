@@ -1,83 +1,84 @@
 # Kairos
 
-Le copilote de support qui agit **au bon moment** (*kairos*), dans Jira Service Management et Confluence.
-Il prévient avant qu'un SLA ne casse, repère l'incident qui naît, retrouve la réponse déjà écrite, dit quand il ne sait pas,
-et fonctionne en français, anglais et espagnol. Aucune donnée n'est envoyée à un LLM payant.
+The support copilot that acts **at the right moment** (*kairos*), inside Jira Service Management and Confluence.
+It warns you before an SLA breaks, spots an incident as it forms, finds the answer that was already written, says so when it
+does not know, and works in French, English and Spanish. No data is sent to a paid LLM.
 
 ```
-Jira / Confluence ── Forge (agent Rovo, déclencheurs, panneau) ──▶ Backend Kairos ──▶ PostgreSQL
-                                                                         │  ▲
-                              Frontend React (fr · en · es) ◀────────────┘  │ export masqué / prédictions
-                                                                         ▼  │
-                                                           Kairos Brain (service d'IA, déployé à part)
+Jira / Confluence ── Forge (Rovo agent, triggers, panel) ──▶ Kairos backend ──▶ PostgreSQL
+                                                                   │  ▲
+                              React frontend (fr · en · es) ◀──────┘  │ masked export / predictions
+                                                                   ▼  │
+                                                     Kairos Brain (AI service, deployed separately)
 ```
 
-| Dossier | Contenu |
+| Folder | Contents |
 |---|---|
-| `backend/` | API Fastify 5 + PostgreSQL 16 : authentification complète, 48 analyses d'intelligence sans LLM, webhooks, audit infalsifiable |
-| `frontend/` | Application React + Tailwind : landing, tableau de bord, demandes, copilote, intelligence, réglages |
-| `forge-app/` | Application Forge : agent Rovo (6 actions), déclencheurs Jira, panneau de demande |
-| `ml/` | **Kairos Brain** : notebook d'entraînement, modèles, service d'inférence FastAPI |
+| `backend/` | Fastify 5 + PostgreSQL 16 API: full authentication, 48 LLM-free intelligence analyses, team chat, webhooks, tamper-evident audit log |
+| `frontend/` | React + Tailwind installable PWA: landing page, dashboard, tickets, copilot, intelligence, team chat, customers, automation, settings |
+| `forge-app/` | Forge app: Rovo agent (7 actions), Jira triggers, issue panel |
+| `ml/` | **Kairos Brain**: training notebook, models, FastAPI inference service |
 
-## Démarrer
+## Getting started
 
 ```bash
-cp .env.example .env            # renseigner JWT_SECRET et ENCRYPTION_KEY : openssl rand -hex 32
+cp .env.example .env            # set JWT_SECRET and ENCRYPTION_KEY: openssl rand -hex 32
 SEED_DEMO=true docker compose up --build
-# application : http://localhost:8080   (compte de démonstration : voir backend/src/db/seed.js)
+# application: http://localhost:8080   (demo account: see backend/src/db/seed.js)
 ```
 
-Développement local : `cd backend && npm run dev` (port 4000) et `cd frontend && npm run dev` (port 5173, proxifie `/api`).
-En développement, le code de confirmation d'e-mail s'affiche dans la console du backend ; en production, définir `SMTP_URL`.
+Local development: `cd backend && npm run dev` (port 4000) and `cd frontend && npm run dev` (port 5173, proxies `/api`).
+In development the e-mail confirmation code is printed in the backend console; in production, set `SMTP_URL`.
 
-## Ce que fait le backend
+Production deployment (Vercel for the frontend and the API as two separate projects, Neon PostgreSQL, Modal for the AI
+service) is described in [`DEPLOY.md`](DEPLOY.md).
 
-* **Authentification** : inscription avec code e-mail à 6 chiffres (aucune session avant confirmation), 2FA TOTP et codes de secours,
-  rotation des refresh tokens avec détection de vol, verrouillage de compte, Google et GitHub (OAuth + PKCE), clés d'API à portée.
-* **48 analyses sans LLM** (`/api/v1/intel/*`) : prévision de SLA, incident naissant, réponse sourcée avec abstention, churn,
-  radar de surcharge, prévision de capacité, risque de déploiement, segmentation de clients, résumé extractif, etc.
-  Les réponses sont structurées (codes et nombres) : l'interface les affiche dans la langue de l'utilisateur.
-* **Sécurité** : journal d'audit chaîné par hachage, protection SSRF des webhooks, signatures anti-rejeu, masquage des données
-  personnelles avec coffre réversible, isolation stricte entre organisations (vérifiée par tests).
+## What the backend does
 
-## Kairos Brain (le modèle d'IA)
+* **Authentication**: sign-up with a 6-digit e-mail code (no session before confirmation), TOTP 2FA and backup codes,
+  refresh-token rotation with theft detection, account lockout, Google and GitHub (OAuth + PKCE), scoped API keys.
+* **48 LLM-free analyses** (`/api/v1/intel/*`): SLA forecast, emerging incident, sourced answer with abstention, churn,
+  overload radar, capacity forecast, deployment risk, customer segmentation, extractive summary, and more.
+  Responses are structured (codes and numbers): the interface renders them in the user's language.
+* **Team workspace**: channels and direct messages, quoted replies, attachments with strict upload checks (magic-byte
+  sniffing, closed allow-list, no SVG/HTML/executables/macros, optional ClamAV scan), profile photos, unified search.
+* **Security**: hash-chained audit log, SSRF protection for webhooks, anti-replay signatures, personal-data masking with a
+  reversible vault, strict isolation between organizations (verified by tests).
 
-Un plongement multilingue pré-entraîné plus des modèles légers appris sur **vos** demandes : priorité, composant, délai de
-résolution (quantiles), risque de réouverture, et recherche sémantique entre langues. Voir [`ml/README.md`](ml/README.md).
+## Kairos Brain (the AI model)
 
-* Évaluation rigoureuse : validation croisée imbriquée, références simples, test de permutation.
-* **Barrière de qualité** : un modèle qui ne bat pas sa référence n'est pas servi ; le backend retombe sur ses algorithmes lexicaux.
-* Déployé séparément ; le backend l'appelle avec un disjoncteur (`ML_URL`, `ML_API_KEY`). Sans lui, rien ne casse.
-* Suivi réel : `GET /ml/monitoring` compare chaque prédiction servie à la décision finale des agents.
+A pre-trained multilingual embedding plus lightweight models learned from **your** requests: priority, component,
+resolution time (quantiles), reopening risk, and cross-language semantic search. See [`ml/README.md`](ml/README.md).
 
-## Internationalisation
+* Rigorous evaluation: nested cross-validation, simple baselines, permutation test.
+* **Quality gate**: a model that does not beat its baseline is not served; the backend falls back to its lexical algorithms.
+* Deployed separately; the backend calls it through a circuit breaker (`ML_URL`, `ML_API_KEY`). Without it, nothing breaks.
+* Real monitoring: `GET /ml/monitoring` compares each served prediction with the agents' final decision.
 
-Français, anglais, espagnol. `npm run i18n:check` (lancé avant chaque build) échoue si une langue contient du texte d'une autre :
-parité des clés et des variables, aucun texte en dur dans le JSX, énumérations et codes d'erreur du backend tous traduits.
-Le contenu saisi par les utilisateurs (titres de demandes, articles) n'est évidemment pas traduit.
+## Internationalization
 
-## Application Forge
+French, English, Spanish. `npm run i18n:check` (run before every build) fails if a language contains text from another one:
+key and variable parity, no hard-coded text in JSX, every backend enum and error code translated.
+Text typed by users (ticket titles, articles) is of course not translated; the bundled demo content (team messages, channel
+topics, rule names) is stored in all three languages and shown in the language of the interface (`X-Lang` header).
+
+## Forge app
 
 ```bash
 cd forge-app
-npm i -g @forge/cli && forge login
-forge register                      # remplace l'identifiant dans manifest.yml
-# manifest.yml : remotes.baseUrl et permissions.external.fetch.backend.address = URL publique HTTPS du backend
-forge lint && forge deploy && forge install
+npm install
+npx forge login
+npx forge register                  # replaces the app id in manifest.yml
+# manifest.yml: remotes.baseUrl and permissions.external.fetch.backend.address = public HTTPS URL of the backend
+npx forge lint && npx forge deploy && npx forge install
 ```
-Le manifeste passe le validateur officiel hors ligne (`forge-app/.validate.cjs`) ; `forge lint` complet exige une connexion Atlassian.
+
+The manifest passes the official validator offline (`forge-app/.validate.cjs`); the full `forge lint` requires an Atlassian login.
 
 ## Tests
 
-| Commande | Portée |
+| Command | Scope |
 |---|---|
-| `cd backend && npm test` | 103 tests d’intégration sur une vraie base PostgreSQL (auth, sécurité, 48 analyses, OAuth contre de faux fournisseurs, pont vers le service d’IA) |
-| `cd ml && KAIROS_EMBEDDER=hash python -m unittest discover -s tests` | 23 tests : entraînement, barrière de qualité, service, rechargement à chaud |
-| `cd frontend && npm run i18n:check` | cohérence des trois langues |
-
-## Limites connues, dites franchement
-
-* Les données de démonstration sont fabriquées (155 demandes) : les métriques du modèle d'IA qui en sortent ne prouvent rien.
-  Entraînez sur vos vraies demandes (notebook `ml/notebooks/kairos_brain_training.ipynb`).
-* L'API Teamwork Graph d'Atlassian est en accès anticipé : elle n'est pas intégrée.
-* L'application mobile Flutter n'est pas commencée.
+| `cd backend && npm test` | 153 integration tests on a real PostgreSQL database (auth, security, the 48 analyses, search, chat and uploads, OAuth against fake providers, the bridge to the AI service, demo content in three languages) |
+| `cd ml && KAIROS_EMBEDDER=hash python -m unittest discover -s tests` | 23 tests: training, quality gate, service, hot reload |
+| `cd frontend && npm run i18n:check` | consistency of the three languages |
