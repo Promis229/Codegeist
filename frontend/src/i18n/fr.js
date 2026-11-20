@@ -1,5 +1,7 @@
+import legal from './legal.fr.js';
 // Français : langue de référence. Toute clé ajoutée ici doit exister en en.js et es.js (vérifié par `npm run i18n:check`).
 export default {
+  ...legal,
   'meta.description': 'Kairos : le copilote de support qui agit au bon moment, dans Jira Service Management.',
 
   // ---- commun

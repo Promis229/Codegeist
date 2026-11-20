@@ -1,5 +1,7 @@
+import legal from './legal.es.js';
 // Español
 export default {
+  ...legal,
   'meta.description': 'Kairos: el copiloto de soporte que actúa en el momento oportuno, dentro de Jira Service Management.',
 
   'common.loading': 'Cargando',

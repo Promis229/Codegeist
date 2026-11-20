@@ -545,6 +545,7 @@ export default function Landing() {
         <div className="mx-auto flex max-w-[1240px] flex-wrap items-center justify-between gap-4 text-[13px] text-faint">
           <Logo size={22} />
           <p>{t('lp.foot')}</p>
+          <nav className="flex gap-4"><Link to="/privacy" className="hover:text-ink">{t('legal.nav.privacy')}</Link><Link to="/terms" className="hover:text-ink">{t('legal.nav.terms')}</Link></nav>
           <LangSwitch />
         </div>
       </footer>

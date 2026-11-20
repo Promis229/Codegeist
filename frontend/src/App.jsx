@@ -19,6 +19,7 @@ const Customers = lazyPage(() => import('./pages/Customers.jsx'));
 const Team = lazyPage(() => import('./pages/Team.jsx'));
 const Automation = lazyPage(() => import('./pages/Automation.jsx'));
 const Integrations = lazyPage(() => import('./pages/Integrations.jsx'));
+const Legal = lazyPage(() => import('./pages/Legal.jsx'));
 
 /** Ecran reserve a un role : un role insuffisant est renvoye a l'accueil (le serveur refuse de toute facon les appels). */
 function Gate({ min, children }) {
@@ -53,6 +54,8 @@ export default function App() {
     <Suspense fallback={<Splash />}>
     <Routes>
       <Route path="/welcome" element={<Public bare><Landing /></Public>} />
+      <Route path="/privacy" element={<Legal doc="privacy" />} />
+      <Route path="/terms" element={<Legal doc="terms" />} />
       <Route path="/demo" element={<Public><DemoEntry /></Public>} />
       <Route path="/login" element={<Public><Login /></Public>} />
       <Route path="/register" element={<Public><Register /></Public>} />
