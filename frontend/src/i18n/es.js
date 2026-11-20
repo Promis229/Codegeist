@@ -186,7 +186,7 @@ export default {
   'cp.h1.t': 'Búsqueda.', 'cp.h1.p': 'La pregunta se compara con tus artículos de Confluence y con las respuestas ya dadas en solicitudes resueltas.',
   'cp.h2.t': 'Extracción.', 'cp.h2.p': 'Solo se conservan frases existentes, nunca inventadas, cada una ligada a su fuente.',
   'cp.h3.t': 'Confianza.', 'cp.h3.p': 'Cobertura de la pregunta, número de fuentes distintas, antigüedad del artículo.',
-  'cp.h4.t': 'Abstención.', 'cp.h4.p': 'Por debajo del 35 % de confianza, Kairos lo dice y cede el turno a una persona.',
+  'cp.h4.t': 'Abstención.', 'cp.h4.p': 'Por debajo del 40 % de confianza, Kairos lo dice y cede el turno a una persona.',
 
   'in.eyebrow': '48 análisis, ninguna API de pago', 'in.title': 'Inteligencia',
   'in.tab.clients': 'Clientes', 'in.tab.team': 'Equipo', 'in.tab.volume': 'Volumen', 'in.tab.impact': 'Impacto',

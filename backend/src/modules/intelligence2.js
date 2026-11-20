@@ -36,7 +36,7 @@ async function semanticAnswer(orgId, question, solved) {
   const picked = [];
   const seen = new Set();
   for (const c of ranked) {
-    if (picked.length >= 4 || c.score < 0.4 || c.score < top - 0.12) break;
+    if (picked.length >= 4 || c.score < 0.27 || c.score < top - 0.12) break;
     const norm = c.s.toLowerCase().replace(/s+/g, ' ');
     if (seen.has(norm) || picked.filter((x) => x.si === c.si).length >= 2) continue; // meme phrase recopiee dans plusieurs tickets : une seule fois
     seen.add(norm);
@@ -45,7 +45,7 @@ async function semanticAnswer(orgId, question, solved) {
   const distinct = new Set(picked.map((x) => x.si)).size;
   const kbBest = src[picked[0]?.si];
   const fresh = kbBest?.updatedAt ? ((Date.now() - new Date(kbBest.updatedAt)) / DAY < 180 ? 1 : 0.5) : 0.5;
-  const confidence = picked.length ? round(clamp(0.75 * clamp((top - 0.35) / 0.4, 0, 1) + 0.15 * Math.min(distinct / 2, 1) + 0.1 * fresh, 0, 0.9), 3) : 0;
+  const confidence = picked.length ? round(clamp(0.4 + 0.75 * (top - 0.27) + 0.02 * Math.min(distinct / 2, 1) + 0.02 * fresh - 0.02, 0, 0.9), 3) : 0;
   return { sources: src, picked: picked.map((c) => ({ s: c.s, si: c.si, matched: [] })), confidence, coverage: round(top, 3), top };
 }
 
@@ -307,7 +307,7 @@ export default async function intelligence2Routes(app) {
     const abstained = confidence < 0.4;
     const answer = abstained ? '' : picked.map((p) => p.s).join(' ');
     const saved = await one(`INSERT INTO answer_provenance(org_id, ticket_id, question, answer, confidence, citations) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`, [req.auth.orgId, ticketId ?? null, question, answer, confidence, JSON.stringify(citations)]);
-    return { id: saved.id, abstained, confidence, coverage: round(coverage, 3), answer: abstained ? null : answer, reason: abstained ? 'Confiance insuffisante : mieux vaut une reponse humaine qu\'une reponse inventee.' : undefined, citations };
+    return { id: saved.id, abstained, confidence, coverage: round(coverage, 3), semanticTop: sem?.top ?? null, answer: abstained ? null : answer, reason: abstained ? 'Confiance insuffisante : mieux vaut une reponse humaine qu\'une reponse inventee.' : undefined, citations };
   });
 
   app.post('/intel/answer/:id/feedback', agent, async (req) => {

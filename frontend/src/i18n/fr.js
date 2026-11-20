@@ -194,7 +194,7 @@ export default {
   'cp.h1.t': 'Recherche.', 'cp.h1.p': 'La question est comparée à vos articles Confluence et aux réponses déjà données sur des demandes résolues.',
   'cp.h2.t': 'Extraction.', 'cp.h2.p': 'Seules des phrases existantes sont retenues, jamais inventées, chacune rattachée à sa source.',
   'cp.h3.t': 'Confiance.', 'cp.h3.p': 'Couverture de la question, nombre de sources distinctes, fraîcheur de l’article.',
-  'cp.h4.t': 'Abstention.', 'cp.h4.p': 'Sous 35 % de confiance, Kairos le dit et laisse la main à un humain.',
+  'cp.h4.t': 'Abstention.', 'cp.h4.p': 'Sous 40 % de confiance, Kairos le dit et laisse la main à un humain.',
 
   // ---- intelligence
   'in.eyebrow': '48 analyses, aucune API payante', 'in.title': 'Intelligence',

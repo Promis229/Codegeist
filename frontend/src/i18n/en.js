@@ -186,7 +186,7 @@ export default {
   'cp.h1.t': 'Search.', 'cp.h1.p': 'The question is compared with your Confluence articles and with answers already given on resolved requests.',
   'cp.h2.t': 'Extraction.', 'cp.h2.p': 'Only existing sentences are kept, never invented, each tied to its source.',
   'cp.h3.t': 'Confidence.', 'cp.h3.p': 'Coverage of the question, number of distinct sources, freshness of the article.',
-  'cp.h4.t': 'Abstention.', 'cp.h4.p': 'Below 35% confidence, Kairos says so and hands over to a human.',
+  'cp.h4.t': 'Abstention.', 'cp.h4.p': 'Below 40% confidence, Kairos says so and hands over to a human.',
 
   'in.eyebrow': '48 analyses, no paid API', 'in.title': 'Intelligence',
   'in.tab.clients': 'Customers', 'in.tab.team': 'Team', 'in.tab.volume': 'Volume', 'in.tab.impact': 'Impact',
