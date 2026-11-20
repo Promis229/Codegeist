@@ -16,7 +16,7 @@ Jira / Confluence ── Forge (Rovo agent, triggers, panel) ──▶ Kairos ba
 |---|---|
 | `backend/` | Fastify 5 + PostgreSQL 16 API: full authentication, 48 LLM-free intelligence analyses, team chat, webhooks, tamper-evident audit log |
 | `frontend/` | React + Tailwind installable PWA: landing page, dashboard, tickets, copilot, intelligence, team chat, customers, automation, settings |
-| `forge-app/` | Forge app: Rovo agent (7 actions), Jira triggers, issue panel |
+| `forge-app/` | Forge app: Rovo agent (7 actions), **Atlassian MCP server** exposing the same 7 tools (`rovo:mcp`), Jira triggers, issue panel |
 | `ml/` | **Kairos Brain**: training notebook, models, FastAPI inference service |
 
 ## Getting started
@@ -72,6 +72,9 @@ npx forge register                  # replaces the app id in manifest.yml
 # manifest.yml: remotes.baseUrl and permissions.external.fetch.backend.address = public HTTPS URL of the backend
 npx forge lint && npx forge deploy && npx forge install
 ```
+
+Once installed, the same seven actions are available as MCP tools (Rovo Studio agents, and external clients such as Claude at
+`https://mcp.atlassian.com/forge/<app-id>` once a site admin enables external access). Requires `@forge/cli` 13.3 or higher.
 
 The manifest passes the official validator offline (`forge-app/.validate.cjs`); the full `forge lint` requires an Atlassian login.
 

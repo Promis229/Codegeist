@@ -23,6 +23,22 @@ modules:
         - find-similar
 
   # ------------------------------------------------------------------
+  # Serveur MCP : les memes actions, exposees comme outils a Rovo Studio et aux clients MCP externes (Claude, etc.).
+  # URL : https://mcp.atlassian.com/forge/<UUID de app.id>  (exposition externe a activer par l'administrateur du site)
+  # ------------------------------------------------------------------
+  rovo:mcp:
+    - key: kairos-mcp
+      name: Kairos Support MCP
+      tools:
+        - triage-request
+        - answer-with-sources
+        - customers-at-risk
+        - emerging-incidents
+        - shift-handoff
+        - check-reply
+        - find-similar
+
+  # ------------------------------------------------------------------
   # Actions de l'agent (chacune appelle le backend Kairos)
   # ------------------------------------------------------------------
   action:
