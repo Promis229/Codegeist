@@ -18,6 +18,8 @@ ENV KAIROS_EMBED_MODEL=${KAIROS_EMBED_MODEL}
 RUN if [ "$BAKE_EMBED_MODEL" = "1" ]; then python -c "from sentence_transformers import SentenceTransformer as S; S('${KAIROS_EMBED_MODEL}')"; fi
 
 COPY kairos_brain ./kairos_brain
+# Modèle entraîné embarqué dans l'image (un volume monté sur /app/models, comme dans docker-compose, le remplace).
+COPY models ./models
 RUN useradd -r -u 10001 kairos && mkdir -p /app/models && chown -R kairos /app /opt/hf
 USER kairos
 
