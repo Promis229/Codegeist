@@ -38,9 +38,38 @@ export const Backdrop: React.FC = () => {
   return (
     <AbsoluteFill style={{ background: `linear-gradient(160deg, ${C.bg2}, ${C.bg} 55%, #0b0807)` }}>
       <AbsoluteFill style={{ background: [blob(380, 260, 640, "rgba(240,163,94,0.30)", 90, 0), blob(1580, 840, 720, "rgba(255,123,92,0.22)", 120, 2), blob(1000, 560, 520, "rgba(190,110,50,0.14)", 150, 4)].join(",") }} />
+      <Bokeh />
       <AbsoluteFill style={{ background: "radial-gradient(120% 90% at 50% 50%, transparent 55%, rgba(0,0,0,0.55) 100%)" }} />
     </AbsoluteFill>
   );
+};
+
+/** Slow drifting points of warm light, like out-of-focus highlights. */
+const Bokeh: React.FC = () => {
+  const f = useCurrentFrame();
+  return (
+    <AbsoluteFill>
+      {Array.from({ length: 22 }).map((_, i) => {
+        const r = (n: number) => { const x = Math.sin(i * 127.1 + n * 311.7) * 43758.5453; return x - Math.floor(x); };
+        const size = 10 + r(1) * 46;
+        const x = ((r(2) * 2100 + f * (0.15 + r(3) * 0.35)) % 2100) - 90;
+        const y = 1160 - (((r(4) * 1300 + f * (0.25 + r(5) * 0.5)) % 1300));
+        const o = 0.08 + r(6) * 0.2;
+        const c = r(7) > 0.5 ? "255,197,138" : "255,123,92";
+        return <div key={i} style={{ position: "absolute", left: x, top: y, width: size, height: size, borderRadius: "50%", background: `radial-gradient(circle, rgba(${c},${o * 2}) 0%, rgba(${c},${o}) 45%, transparent 70%)` }} />;
+      })}
+    </AbsoluteFill>
+  );
+};
+
+/** A diagonal specular sweep that crosses glass surfaces every few seconds. */
+export const Gloss: React.FC<{ radius?: number; period?: number; offset?: number }> = ({ radius = 26, period = 210, offset = 0 }) => {
+  const f = useCurrentFrame();
+  const t = ((f + offset) % period) / period;
+  const x = interpolate(t, [0, 0.35], [-60, 160], clamp);
+  return <div style={{ position: "absolute", inset: 0, borderRadius: radius, overflow: "hidden", pointerEvents: "none", mixBlendMode: "screen" }}>
+    <div style={{ position: "absolute", top: "-30%", bottom: "-30%", width: "26%", left: `${x}%`, transform: "rotate(18deg)", background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.20), transparent)" }} />
+  </div>;
 };
 
 export const Mark: React.FC<{ size?: number; spin?: number }> = ({ size = 64, spin = 0 }) => (
@@ -77,7 +106,7 @@ export const Browser: React.FC<{ width: number; children: React.ReactNode; url?:
         {["#ff7b5c", "#f0c05e", "#7fcfa6"].map((c) => <i key={c} style={{ width: 12, height: 12, borderRadius: 6, background: c, opacity: 0.85 }} />)}
         <div style={{ flex: 1, margin: "0 40px", height: 26, borderRadius: 13, background: "rgba(0,0,0,0.28)", color: C.faint, fontFamily: sans, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>{url}</div>
       </div>
-      <div style={{ width, height: h, position: "relative", overflow: "hidden", background: "#120d0a" }}>{children}</div>
+      <div style={{ width, height: h, position: "relative", overflow: "hidden", background: "#120d0a" }}>{children}<Gloss radius={0} offset={width} /></div>
     </div>
   );
 };
@@ -85,7 +114,7 @@ export const Browser: React.FC<{ width: number; children: React.ReactNode; url?:
 /** Phone / tablet bezel. `ratio` = height / width of the screen. */
 export const Device: React.FC<{ width: number; ratio: number; radius?: number; children: React.ReactNode; style?: React.CSSProperties }> = ({ width, ratio, radius = 54, children, style }) => (
   <div style={{ width, padding: 12, ...glass(radius, 0.1, true), ...style }}>
-    <div style={{ width: width - 24, height: Math.round((width - 24) * ratio), borderRadius: radius - 12, overflow: "hidden", position: "relative", background: "#120d0a" }}>{children}</div>
+    <div style={{ width: width - 24, height: Math.round((width - 24) * ratio), borderRadius: radius - 12, overflow: "hidden", position: "relative", background: "#120d0a" }}>{children}<Gloss radius={radius - 12} offset={width * 2} period={260} /></div>
   </div>
 );
 
@@ -145,6 +174,25 @@ export const Captions: React.FC<{ keyName: string }> = ({ keyName }) => {
   );
 };
 
+/** Mosaic of rounded glass tiles that pops in and out across the screen: the scene transition. */
+export const TileWipe: React.FC<{ at: number }> = ({ at }) => {
+  const f = useCurrentFrame();
+  const cols = 8, rows = 5, tw = W / cols, th = H / rows;
+  return (
+    <AbsoluteFill style={{ pointerEvents: "none" }}>
+      {Array.from({ length: cols * rows }).map((_, i) => {
+        const c = i % cols, r = Math.floor(i / cols);
+        const d = (c + r * 0.8) * 1.6;
+        const local = f - (at - 14) - d;
+        const s = Math.sin(Math.PI * clampN(local / 26, 0, 1));
+        if (s <= 0.01) return null;
+        return <div key={i} style={{ position: "absolute", left: c * tw + 8, top: r * th + 8, width: tw - 16, height: th - 16, borderRadius: 30, transform: `scale(${s})`, background: "linear-gradient(145deg, rgba(240,163,94,0.32), rgba(255,123,92,0.18))", border: "1px solid rgba(255,255,255,0.22)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)" }} />;
+      })}
+    </AbsoluteFill>
+  );
+};
+const clampN = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
+
 /** Wraps every scene: fade/slide/blur in and out, voice-over, whoosh, captions. */
 export const SceneShell: React.FC<{ keyName: string; children: React.ReactNode; captions?: boolean }> = ({ keyName, children, captions = true }) => {
   const f = useCurrentFrame();
@@ -158,6 +206,8 @@ export const SceneShell: React.FC<{ keyName: string; children: React.ReactNode; 
       <Audio src={staticFile("audio/whoosh.wav")} volume={0.28} />
       {children}
       {captions ? <Captions keyName={keyName} /> : null}
+      <TileWipe at={dur} />
+      <TileWipe at={0} />
     </AbsoluteFill>
   );
 };

@@ -1,11 +1,8 @@
-import { loadFont as loadSerif } from "@remotion/google-fonts/Fraunces";
-import { loadFont as loadSans } from "@remotion/google-fonts/HankenGrotesk";
-import { loadFont as loadMono } from "@remotion/google-fonts/JetBrainsMono";
 import voiceover from "./voiceover.json";
 
-export const serif = loadSerif("normal", { weights: ["400", "500", "600"], subsets: ["latin"] }).fontFamily;
-export const sans = loadSans("normal", { weights: ["400", "500", "600", "700"], subsets: ["latin"] }).fontFamily;
-export const mono = loadMono("normal", { weights: ["500"], subsets: ["latin"] }).fontFamily;
+export const serif = "KFraunces, Georgia, serif";
+export const sans = "KHanken, system-ui, sans-serif";
+export const mono = "ui-monospace, Menlo, Consolas, monospace";
 
 // Same warm palette as the product: amber and coral on a deep brown-black (no purple, no cyan).
 export const C = {
