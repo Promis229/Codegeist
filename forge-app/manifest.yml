@@ -5,7 +5,8 @@ modules:
   rovo:agent:
     - key: kairos-agent
       name: Kairos Support Copilot
-      description: Triage, reponse sourcee, risque de churn et releve d'equipe pour votre service desk, relies a Jira et Confluence.
+      description: Triage, reponse sourcee, risque de churn et releve d'equipe pour
+        votre service desk, relies a Jira et Confluence.
       icon: resource:static;icons/kairos.svg
       prompt: resource:static;prompts/kairos-agent.txt
       conversationStarters:
@@ -46,7 +47,9 @@ modules:
       name: Triager une demande
       function: triage-request-fn
       actionVerb: GET
-      description: Analyse une demande client (ton, frustration, priorite suggeree) et retrouve les articles Confluence pertinents et les tickets similaires deja traites.
+      description: Analyse une demande client (ton, frustration, priorite suggeree) et
+        retrouve les articles Confluence pertinents et les tickets similaires
+        deja traites.
       inputs:
         summary:
           title: Resume
@@ -62,7 +65,9 @@ modules:
       name: Repondre avec sources
       function: answer-fn
       actionVerb: GET
-      description: Compose une reponse a partir de la base de connaissances et des resolutions passees, avec citations. S'abstient explicitement si la confiance est trop faible.
+      description: Compose une reponse a partir de la base de connaissances et des
+        resolutions passees, avec citations. S'abstient explicitement si la
+        confiance est trop faible.
       inputs:
         question:
           title: Question
@@ -73,7 +78,8 @@ modules:
       name: Clients a risque
       function: risk-fn
       actionVerb: GET
-      description: Liste les clients avec le plus fort risque d'attrition, avec les signaux qui l'expliquent.
+      description: Liste les clients avec le plus fort risque d'attrition, avec les
+        signaux qui l'expliquent.
       inputs:
         limit:
           title: Nombre
@@ -84,7 +90,8 @@ modules:
       name: Incidents emergents
       function: incidents-fn
       actionVerb: GET
-      description: Detecte un pic anormal de demandes par composant, avec le rayon d'impact et le deploiement suspect.
+      description: Detecte un pic anormal de demandes par composant, avec le rayon
+        d'impact et le deploiement suspect.
       inputs:
         scope:
           title: Portee
@@ -95,7 +102,8 @@ modules:
       name: Releve d'equipe
       function: handoff-fn
       actionVerb: GET
-      description: Genere le briefing de releve d'equipe (critiques, clients en attente, clients tendus) en Markdown.
+      description: Genere le briefing de releve d'equipe (critiques, clients en
+        attente, clients tendus) en Markdown.
       inputs:
         hours:
           title: Heures
@@ -106,7 +114,8 @@ modules:
       name: Verifier une reponse
       function: guard-fn
       actionVerb: GET
-      description: Controle un brouillon de reponse avant envoi (promesses risquees, responsabilite, ton, donnees personnelles).
+      description: Controle un brouillon de reponse avant envoi (promesses risquees,
+        responsabilite, ton, donnees personnelles).
       inputs:
         draft:
           title: Brouillon
@@ -118,7 +127,9 @@ modules:
       name: Trouver des cas proches
       function: find-similar-fn
       actionVerb: GET
-      description: Cherche les demandes et articles proches d'une question, dans toutes les langues. L'agent fournit la question ET ses traductions (francais, anglais, espagnol) ; le backend fusionne les resultats.
+      description: Cherche les demandes et articles proches d'une question, dans
+        toutes les langues. L'agent fournit la question ET ses traductions
+        (francais, anglais, espagnol) ; le backend fusionne les resultats.
       inputs:
         query:
           title: Question
@@ -129,7 +140,8 @@ modules:
           title: Traductions
           type: string
           required: false
-          description: La meme question traduite en francais, anglais et espagnol (les langues differentes de l'original), separees par le caractere |
+          description: La meme question traduite en francais, anglais et espagnol (les
+            langues differentes de l'original), separees par le caractere |
 
   # ------------------------------------------------------------------
   # Evenements : chaque demande creee est synchronisee et enrichie
@@ -193,6 +205,7 @@ remotes:
     baseUrl: https://kairos-api-omega.vercel.app
     operations:
       - compute
+      - storage
     storage:
       inScopeEUD: false
 
@@ -206,15 +219,15 @@ permissions:
   scopes:
     - read:jira-work
     - read:confluence-content.all
+    - read:page:confluence
   external:
     fetch:
       backend:
         # Les fonctions (actions Rovo, declencheurs) appellent le backend avec une cle d'API : l'egress doit etre declare.
         - address: kairos-api-omega.vercel.app
-          category: analytics
           inScopeEUD: false
 
 app:
   runtime:
     name: nodejs22.x
-  id: ari:cloud:ecosystem::app/REPLACE-WITH-forge-register
+  id: ari:cloud:ecosystem::app/873bb47a-15ff-4151-9a17-0ddd0bb3ce83
